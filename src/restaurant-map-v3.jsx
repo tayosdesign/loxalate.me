@@ -2412,8 +2412,8 @@ function PicksStrip({ picks, onSelect }) {
     <div style={{ marginTop: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <div style={{ width: 3, height: 18, background: "#7AAFD4", borderRadius: 2 }} />
-        <div style={{ fontSize: 15, fontWeight: 800, color: "#111827" }}>Lowest Oxalate Picks</div>
-        <div style={{ fontSize: 11, color: "#6E7187" }}>{picks.length} dishes · tap for details</div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "#111827" }}>Lowest Oxalate Picks</div>
+        <div style={{ fontSize: 14, color: "#6E7187" }}>{picks.length} dishes · tap for details</div>
       </div>
       <div
         ref={scrollRef}
@@ -2431,7 +2431,7 @@ function PicksStrip({ picks, onSelect }) {
                 {p.total}<span style={{ fontSize: 11, fontWeight: 600, color: "#6E7187" }}>mg</span>
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 3 }}>{p.dish}</div>
-              <div style={{ fontSize: 11, color: "#6E7187" }}>{p.restaurantName}</div>
+              <div style={{ fontSize: 14, color: "#6E7187" }}>{p.restaurantName}</div>
             </div>
           );
         })}
@@ -2511,7 +2511,7 @@ function DishModal({ dish, onClose, onAdd }) {
         </div>
 
         <div style={{ overflowY: "auto", padding: "8px 22px 36px" }}>
-          <div style={{ fontSize: 12, color: "#6E7187", marginBottom: 8 }}>
+          <div style={{ fontSize: 14, color: "#6E7187", marginBottom: 8 }}>
             {dish.restaurantName} · {dish.restaurantArea}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
@@ -2527,7 +2527,7 @@ function DishModal({ dish, onClose, onAdd }) {
               <span style={{ fontWeight: 700 }}>Tip: </span>{dish.modifications}
             </div>
           )}
-          <div style={{ fontSize: 12, color: "#6E7187", marginBottom: 14 }}>🍳 {dish.cookingMethod}</div>
+          <div style={{ fontSize: 14, color: "#6E7187", marginBottom: 14 }}>🍳 {dish.cookingMethod}</div>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>Ingredients</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
             {dish.ingredients.map((ing, i) => {
@@ -2536,10 +2536,10 @@ function DishModal({ dish, onClose, onAdd }) {
               return (
                 <div key={i}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                    <span style={{ fontSize: 13, color: "#374151", fontWeight: 500 }}>{ing.name}</span>
+                    <span style={{ fontSize: 15, color: "#374151", fontWeight: 500 }}>{ing.name}</span>
                     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                      <span style={{ fontSize: 12, color: "#6E7187" }}>{ing.amount}</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: ing.oxalate === 0 ? "#6E7187" : c, minWidth: 36, textAlign: "right" }}>{ing.oxalate} mg</span>
+                      <span style={{ fontSize: 14, color: "#6E7187" }}>{ing.amount}</span>
+                      <span style={{ fontSize: 15, fontWeight: 600, color: ing.oxalate === 0 ? "#6E7187" : c, minWidth: 36, textAlign: "right" }}>{ing.oxalate} mg</span>
                     </div>
                   </div>
                   <div style={{ height: 3, background: "#7AAFD4", borderRadius: 2 }}>
@@ -2552,7 +2552,7 @@ function DishModal({ dish, onClose, onAdd }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 14, borderTop: "1px solid #f3f4f6", marginBottom: 16 }}>
             <div>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#6E7187" }}>Total Oxalate</div>
-              <div style={{ fontSize: 12, color: "#6E7187" }}>Daily target: 50–100mg</div>
+              <div style={{ fontSize: 14, color: "#6E7187" }}>Daily target: 50–100mg</div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 26, fontWeight: 800, color: col }}>{dish.total} mg</div>
@@ -2627,7 +2627,7 @@ function DishModal({ dish, onClose, onAdd }) {
                       display: "flex", alignItems: "center", gap: 10,
                       background: added ? "#22c55e" : "#7AAFD4",
                       color: "#FFFFFF", border: "none", borderRadius: 50,
-                      padding: "11px 28px", fontSize: 15, fontWeight: 700,
+                      padding: "11px 28px", fontSize: 17, fontWeight: 700,
                       cursor: "pointer", transition: "background 0.2s, transform 0.1s",
                       boxShadow: "0 2px 12px rgba(79,70,229,0.35)",
                       transform: added ? "scale(0.97)" : "scale(1)"
@@ -2651,7 +2651,7 @@ function DishModal({ dish, onClose, onAdd }) {
                   </button>
                 </div>
 
-                <div style={{ fontSize: 11, color: "#6E7187", textAlign: "center" }}>
+                <div style={{ fontSize: 14, color: "#6E7187", textAlign: "center" }}>
                   Opens search for "{dish.restaurantName}" on each platform
                 </div>
               </div>
@@ -2682,7 +2682,7 @@ function MenuPanel({ restaurant, onDishSelect, onClose }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{restaurant.name}</div>
-            <div style={{ fontSize: 12, color: "#6E7187" }}>{restaurant.area} · {restaurant.type}</div>
+            <div style={{ fontSize: 14, color: "#6E7187" }}>{restaurant.area} · {restaurant.type}</div>
             {menuAvg !== null && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
                 <div style={{
@@ -2721,12 +2721,12 @@ function MenuPanel({ restaurant, onDishSelect, onClose }) {
         {!hasMenu ? (
           <div style={{ textAlign: "center", padding: "24px 0", color: "#6E7187" }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🍽</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#6E7187" }}>No detailed menu data</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#6E7187" }}>No detailed menu data</div>
             <div style={{ fontSize: 11, marginTop: 4 }}>This location hasn't been mapped yet</div>
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 11, color: "#6E7187", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
+            <div style={{ fontSize: 14, color: "#6E7187", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
               Tap a dish for full breakdown
             </div>
             {restaurant.options.map((opt, i) => {
@@ -2746,11 +2746,11 @@ function MenuPanel({ restaurant, onDishSelect, onClose }) {
                     <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 3 }}>{opt.dish}</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {opt.ingredients.slice(0, 3).map((ing, j) => (
-                        <span key={j} style={{ fontSize: 11, color: "#6E7187", background: "#7AAFD4", borderRadius: 4, padding: "1px 5px" }}>
+                        <span key={j} style={{ fontSize: 14, color: "#6E7187", background: "#7AAFD4", borderRadius: 4, padding: "1px 5px" }}>
                           {ing.name.split(" ")[0]}
                         </span>
                       ))}
-                      {opt.ingredients.length > 3 && <span style={{ fontSize: 11, color: "#6E7187" }}>+{opt.ingredients.length - 3} more</span>}
+                      {opt.ingredients.length > 3 && <span style={{ fontSize: 14, color: "#6E7187" }}>+{opt.ingredients.length - 3} more</span>}
                     </div>
                   </div>
                   <div style={{ textAlign: "center", flexShrink: 0 }}>
@@ -2934,7 +2934,7 @@ function TagInput({ tags, onChange, placeholder, suggestions = [], maxTags = 20 
             </div>
           )}
           {filtered.map(s => (
-            <div key={s} onMouseDown={() => add(s)} style={{ padding: "9px 12px", cursor: "pointer", fontSize: 13, color: "#374151" }}
+            <div key={s} onMouseDown={() => add(s)} style={{ padding: "9px 12px", cursor: "pointer", fontSize: 15, color: "#374151" }}
               onMouseEnter={e => e.currentTarget.style.background = "#7AAFD4"}
               onMouseLeave={e => e.currentTarget.style.background = ""}
             >{s}</div>
@@ -2960,7 +2960,7 @@ function PillGroup({ options, value, onChange, multi = true, color = "#7AAFD4" }
         const val    = typeof opt === "object" ? opt.value : opt;
         return (
           <button key={val} onClick={() => toggle(val)} style={{
-            padding: "7px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer",
+            padding: "7px 14px", borderRadius: 999, fontSize: 15, fontWeight: 600, cursor: "pointer",
             border: `1.5px solid ${active ? color : "#B8D9C8"}`,
             background: active ? color : "#FFFFFF",
             color: active ? "#FFFFFF" : "#6E7187",
@@ -3009,7 +3009,7 @@ function Field({ label, children, hint }) {
     <div style={{ marginBottom: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{label}</div>
       {children}
-      {hint && <div style={{ fontSize: 11, color: "#6E7187", marginTop: 4 }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 14, color: "#6E7187", marginTop: 4 }}>{hint}</div>}
     </div>
   );
 }
@@ -3029,7 +3029,7 @@ function Input({ value, onChange, placeholder, type = "text", unit, min, max }) 
         onFocus={e => e.currentTarget.style.borderColor = "#2C5282"}
         onBlur={e => e.currentTarget.style.borderColor = "#B8D9C8"}
       />
-      {unit && <span style={{ fontSize: 13, color: "#6E7187", whiteSpace: "nowrap" }}>{unit}</span>}
+      {unit && <span style={{ fontSize: 14, color: "#6E7187", whiteSpace: "nowrap" }}>{unit}</span>}
     </div>
   );
 }
@@ -3630,7 +3630,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
           <div style={{ fontSize: 12, fontWeight: 800, color: "#7AAFD4", marginBottom: 4 }}>
             🔬 Evidence-Based Approach
           </div>
-          <div style={{ fontSize: 12, color: "#6E7187", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6 }}>
             80% of kidney stones are calcium-oxalate. The Borghi et al. clinical trial found that pairing <strong>calcium with meals</strong> — not a strict low-oxalate diet — reduced recurrence by 49%. Every recipe here applies this principle.
           </div>
         </div>
@@ -3652,7 +3652,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
       </div>
 
       {/* ── Recipe count ── */}
-      <div style={{ padding: "10px 18px 4px", fontSize: 12, color: "#6E7187", fontWeight: 600 }}>
+      <div style={{ padding: "10px 18px 4px", fontSize: 14, color: "#6E7187", fontWeight: 600 }}>
         {filtered.length} recipe{filtered.length !== 1 ? "s" : ""} · tap to open
       </div>
 
@@ -3707,7 +3707,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                     { icon: "👤", val: `${recipe.servings} serving${recipe.servings > 1 ? "s" : ""}` },
                     { icon: "📚", val: recipe.category },
                   ].map(m => (
-                    <span key={m.val} style={{ fontSize: 11, color: "#6E7187", display: "flex", alignItems: "center", gap: 3 }}>
+                    <span key={m.val} style={{ fontSize: 14, color: "#6E7187", display: "flex", alignItems: "center", gap: 3 }}>
                       {m.icon} {m.val}
                     </span>
                   ))}
@@ -3786,7 +3786,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
             style={{
               padding: "10px 20px", borderRadius: 999, border: "2px solid rgba(255,255,255,0.5)",
               background: showBuilder ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.15)",
-              color: "#FFFFFF", fontSize: 15, fontWeight: 800, cursor: "pointer",
+              color: "#FFFFFF", fontSize: 17, fontWeight: 800, cursor: "pointer",
               backdropFilter: "blur(4px)", transition: "all 0.2s"
             }}
           >
@@ -4009,8 +4009,8 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: "#2C5282", marginBottom: 4 }}>{recipe.title}</div>
-                        <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#6E7187" }}>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: "#2C5282", marginBottom: 4 }}>{recipe.title}</div>
+                        <div style={{ display: "flex", gap: 12, fontSize: 14, color: "#6E7187" }}>
                           <span>🍽 {recipe.category}</span>
                           <span>👤 {recipe.servings} serving{recipe.servings > 1 ? "s" : ""}</span>
                           <span>🧪 {recipe.ingredients.length} ingredients</span>
@@ -4037,7 +4037,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
           <span style={{ fontSize: 12, fontWeight: 800, color: "#FFFFFF", textTransform: "uppercase", letterSpacing: "0.1em" }}>Clinical Sources</span>
         </div>
         <div style={{ padding: "18px" }}>
-          <p style={{ fontSize: 12, color: "#6E7187", lineHeight: 1.6, marginBottom: 12 }}>
+          <p style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6, marginBottom: 12 }}>
             All recipes and dietary guidance are grounded in peer-reviewed research and recommendations from registered dietitian nutritionists specializing in kidney stone prevention.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4057,7 +4057,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
               >
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "#2C5282", marginBottom: 2 }}>{source.name}</div>
-                  <div style={{ fontSize: 11, color: "#6E7187" }}>{source.desc}</div>
+                  <div style={{ fontSize: 14, color: "#6E7187" }}>{source.desc}</div>
                 </div>
                 <span style={{ fontSize: 11, color: "#7AAFD4", flexShrink: 0, marginTop: 2 }}>↗</span>
               </a>
@@ -4147,7 +4147,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
               </div>
 
               {/* Source */}
-              <div style={{ fontSize: 12, color: "#6E7187", marginBottom: 16 }}>
+              <div style={{ fontSize: 14, color: "#6E7187", marginBottom: 16 }}>
                 📖 Source:{" "}
                 <a href={selectedRecipe.sourceUrl} target="_blank" rel="noreferrer"
                   style={{ color: "#7AAFD4", fontWeight: 700, textDecoration: "none" }}
@@ -4170,7 +4170,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                       <span style={{ fontSize: 13, color: "#2C5282", fontWeight: 500 }}>{ing.name}</span>
                       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <span style={{ fontSize: 12, color: "#6E7187" }}>{ing.amount}</span>
+                        <span style={{ fontSize: 14, color: "#6E7187" }}>{ing.amount}</span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#6E7187" : c, minWidth: 36, textAlign: "right" }}>
                           {ing.oxalate === 0 ? "0mg" : `${ing.oxalate}mg`}
                         </span>
@@ -4194,7 +4194,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                     color: "#FFFFFF", fontSize: 12, fontWeight: 800,
                     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1
                   }}>{i + 1}</div>
-                  <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.6, flex: 1 }}>{step}</div>
+                  <div style={{ fontSize: 15, color: "#374151", lineHeight: 1.6, flex: 1 }}>{step}</div>
                 </div>
               ))}
 
@@ -4295,7 +4295,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                       <span style={{ fontSize: 13, color: "#2C5282", fontWeight: 500 }}>{ing.name}</span>
                       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <span style={{ fontSize: 12, color: "#6E7187" }}>{ing.amount}</span>
+                        <span style={{ fontSize: 14, color: "#6E7187" }}>{ing.amount}</span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#6E7187" : c, minWidth: 36, textAlign: "right" }}>{ing.oxalate === 0 ? "0mg" : `${ing.oxalate}mg`}</span>
                       </div>
                     </div>
@@ -4310,7 +4310,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
               {selectedMyRecipe.steps.map((step, i) => (
                 <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#7AAFD4", color: "#FFFFFF", fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                  <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.6, flex: 1 }}>{step}</div>
+                  <div style={{ fontSize: 15, color: "#374151", lineHeight: 1.6, flex: 1 }}>{step}</div>
                 </div>
               ))}
 
@@ -4323,7 +4323,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
 
               <button
                 onClick={() => deleteMyRecipe(selectedMyRecipe.id)}
-                style={{ width: "100%", marginTop: 18, padding: "13px", background: "#fef2f2", color: "#dc2626", border: "2px solid #fca5a5", borderRadius: 16, fontSize: 15, fontWeight: 800, cursor: "pointer" }}
+                style={{ width: "100%", marginTop: 18, padding: "13px", background: "#fef2f2", color: "#dc2626", border: "2px solid #fca5a5", borderRadius: 16, fontSize: 17, fontWeight: 800, cursor: "pointer" }}
               >
                 🗑 Delete This Recipe
               </button>
@@ -4431,7 +4431,7 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
           ].filter(Boolean).map(({ label, val }) => (
             <div key={label} style={{ background: "rgba(255,255,255,0.1)", borderRadius: 12, padding: "5px 10px", border: "1px solid rgba(255,255,255,0.12)" }}>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#FFFFFF" }}>{val}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#FFFFFF" }}>{val}</div>
             </div>
           ))}
           {profile.medical_conditions?.length > 0 && (
@@ -4445,7 +4445,7 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
         {/* Profile completion */}
         <div style={{ position: "relative", zIndex: 2 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Profile {completion}% complete</span>
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Profile {completion}% complete</span>
             {completion < 100 && <span onClick={() => setEditOpen(true)} style={{ fontSize: 11, color: "#7AAFD4", fontWeight: 700, cursor: "pointer" }}>Complete →</span>}
           </div>
           <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: 999, height: 4 }}>
@@ -4463,7 +4463,7 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
             <span style={{ fontSize: 12, fontWeight: 800, color: "#2C5282", textTransform: "uppercase", letterSpacing: "0.08em" }}>📋 Today's Log</span>
             <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
               <span style={{ fontSize: 28, fontWeight: 900, color: logColor, lineHeight: 1 }}>{totalToday}</span>
-              <span style={{ fontSize: 12, color: "#6E7187" }}>mg</span>
+              <span style={{ fontSize: 14, color: "#6E7187" }}>mg</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: logColor, marginLeft: 4 }}>{logStatus}</span>
             </div>
           </div>
@@ -4476,7 +4476,7 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
             <span style={{ fontSize: 10, color: "#6E7187" }}>100mg</span>
           </div>
           {trackedDishes.length === 0 ? (
-            <div style={{ fontSize: 12, color: "#6E7187", textAlign: "center", padding: "8px 0" }}>Nothing logged yet — add dishes from the Map 🗺</div>
+            <div style={{ fontSize: 14, color: "#6E7187", textAlign: "center", padding: "8px 0" }}>Nothing logged yet — add dishes from the Map 🗺</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {trackedDishes.map(entry => {
@@ -4485,10 +4485,10 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
                   <div key={entry.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#ffffff", borderRadius: 12, padding: "7px 10px", borderLeft: `3px solid ${c}` }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{entry.dish}</div>
-                      <div style={{ fontSize: 11, color: "#6E7187" }}>{entry.restaurantName} · {entry.time}</div>
+                      <div style={{ fontSize: 14, color: "#6E7187" }}>{entry.restaurantName} · {entry.time}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                      <span style={{ fontSize: 15, fontWeight: 800, color: c }}>{entry.total}mg</span>
+                      <span style={{ fontSize: 17, fontWeight: 800, color: c }}>{entry.total}mg</span>
                       <button onClick={() => removeFromLog(entry.id)} style={{ background: "none", border: "none", color: "#CBD5E1", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2 }}
                         onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                         onMouseLeave={e => e.currentTarget.style.color = "#CBD5E1"}
@@ -4517,7 +4517,7 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
                     {p.replace(/_/g, " ")}
                   </span>
                 ))}
-                {profile.eating_patterns.length > 3 && <span style={{ fontSize: 11, color: "#6E7187" }}>+{profile.eating_patterns.length - 3} more</span>}
+                {profile.eating_patterns.length > 3 && <span style={{ fontSize: 14, color: "#6E7187" }}>+{profile.eating_patterns.length - 3} more</span>}
               </div>
             ) : (
               <span onClick={() => setEditOpen(true)} style={{ fontSize: 12, color: "#7AAFD4", cursor: "pointer", fontWeight: 600 }}>Set up →</span>
@@ -4532,7 +4532,7 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
                 {profile.cuisines.slice(0, 4).map(c => (
                   <span key={c} style={{ fontSize: 11, color: "#2C5282", background: "#DBEAFE", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>{c}</span>
                 ))}
-                {profile.cuisines.length > 4 && <span style={{ fontSize: 11, color: "#6E7187" }}>+{profile.cuisines.length - 4}</span>}
+                {profile.cuisines.length > 4 && <span style={{ fontSize: 14, color: "#6E7187" }}>+{profile.cuisines.length - 4}</span>}
               </div>
             ) : (
               <span onClick={() => setEditOpen(true)} style={{ fontSize: 12, color: "#7AAFD4", cursor: "pointer", fontWeight: 600 }}>Set up →</span>
@@ -4547,7 +4547,7 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
                 {profile.disliked_ingredients.slice(0, 4).map(i => (
                   <span key={i} style={{ fontSize: 11, color: "#dc2626", background: "#fef2f2", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>{i}</span>
                 ))}
-                {profile.disliked_ingredients.length > 4 && <span style={{ fontSize: 11, color: "#6E7187" }}>+{profile.disliked_ingredients.length - 4}</span>}
+                {profile.disliked_ingredients.length > 4 && <span style={{ fontSize: 14, color: "#6E7187" }}>+{profile.disliked_ingredients.length - 4}</span>}
               </div>
             ) : (
               <span onClick={() => setEditOpen(true)} style={{ fontSize: 12, color: "#7AAFD4", cursor: "pointer", fontWeight: 600 }}>Set up →</span>
@@ -4590,8 +4590,8 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
           <div style={{ background: "#FFFFFF", border: "2px dashed #7AAFD4", borderRadius: 18, padding: "20px", textAlign: "center", marginBottom: 12 }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🌿</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282", marginBottom: 6 }}>Complete your profile</div>
-            <div style={{ fontSize: 13, color: "#6E7187", marginBottom: 14, lineHeight: 1.5 }}>Add your goals, conditions, and dietary preferences so Loxalate can personalize your experience.</div>
-            <button onClick={() => setEditOpen(true)} style={{ padding: "10px 24px", background: "#2C5282", color: "#FFFFFF", border: "none", borderRadius: 14, fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
+            <div style={{ fontSize: 14, color: "#6E7187", marginBottom: 14, lineHeight: 1.5 }}>Add your goals, conditions, and dietary preferences so Loxalate can personalize your experience.</div>
+            <button onClick={() => setEditOpen(true)} style={{ padding: "10px 24px", background: "#2C5282", color: "#FFFFFF", border: "none", borderRadius: 14, fontSize: 17, fontWeight: 800, cursor: "pointer" }}>
               Set Up Profile
             </button>
           </div>
@@ -4767,7 +4767,7 @@ function PageFooter({ onNavigate }) {
         ))}
       </div>
       {/* Sources one-liner */}
-      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.6, marginBottom: 16 }}>
+      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.6, marginBottom: 16 }}>
         Clinical sources: National Kidney Foundation · NIDDK · Urology Care Foundation ·
         Jill Harris RD (Kidney Stone Diet) · Melanie Betz MS RD (The Kidney Dietitian) ·
         Journal of Renal Nutrition
@@ -4814,12 +4814,12 @@ function AboutPage({ onNavigate }) {
             <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#2C5282", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>😤</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282" }}>The "Healthy" Routine That Wasn't</div>
           </div>
-          <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, margin: 0 }}>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: 0 }}>
             In late October 2024, I was on a roll. Cooking for myself every night — spinach, kale, carrots,
             chicken. Working out after work. All the things you're supposed to do. Then in late November,
             I learned I had a kidney stone. My doctor's advice? Lay off the red meat and eat more vegetables.
           </p>
-          <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, margin: "12px 0 0" }}>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: "12px 0 0" }}>
             I was confused. <strong>That was already my routine.</strong>
           </p>
         </div>
@@ -4830,13 +4830,13 @@ function AboutPage({ onNavigate }) {
             <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#7AAFD4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>💡</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282" }}>The Oxalate Rabbit Hole</div>
           </div>
-          <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, margin: 0 }}>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: 0 }}>
             Like anyone else, I turned to the internet. That's when I discovered <strong>calcium oxalates</strong> —
             a naturally occurring compound in many foods. The kicker? My entire "healthy" diet was
             loaded with them. Spinach. Kale. Almonds. Sweet potatoes. The foods I was eating every
             single day were the exact foods my kidneys couldn't handle.
           </p>
-          <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, margin: "12px 0 0" }}>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: "12px 0 0" }}>
             I went on a low-oxalate diet for a week. The pain stopped. But staying on it was <em>brutal</em> —
             especially when eating out with friends or family.
           </p>
@@ -4848,12 +4848,12 @@ function AboutPage({ onNavigate }) {
             <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#2C5282", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛠</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282" }}>Building the Thing I Needed</div>
           </div>
-          <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, margin: 0 }}>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: 0 }}>
             The tracking list I was using turned out to be outdated. So I built a small app to validate
             oxalate content per serving and keep track of what I was cooking. That turned into a
             restaurant map. The map turned into a community. One iteration at a time, <strong>LOxalate.me</strong> took shape.
           </p>
-          <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, margin: "12px 0 0" }}>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: "12px 0 0" }}>
             The question driving everything: <em>"Wouldn't it be nice to find other people dealing with
             this — and share what's actually working?"</em>
           </p>
@@ -4874,7 +4874,7 @@ function AboutPage({ onNavigate }) {
 
         {/* What we are / aren't */}
         <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #BFDBFE", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#2C5282", marginBottom: 14 }}>What LOxalate Is (and Isn't)</div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "#2C5282", marginBottom: 14 }}>What LOxalate Is (and Isn't)</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[
               { icon: "✅", text: "A restaurant finder for low-oxalate dining in Pasadena & beyond" },
@@ -4886,7 +4886,7 @@ function AboutPage({ onNavigate }) {
             ].map((item, i) => (
               <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
-                <span style={{ fontSize: 13, color: "#374151", lineHeight: 1.6 }}>{item.text}</span>
+                <span style={{ fontSize: 15, color: "#374151", lineHeight: 1.6 }}>{item.text}</span>
               </div>
             ))}
           </div>
@@ -4894,10 +4894,10 @@ function AboutPage({ onNavigate }) {
 
         {/* CTA */}
         <div style={{ display: "flex", gap: 10, marginBottom: 4 }}>
-          <button onClick={() => onNavigate("map")} style={{ flex: 1, padding: "14px", background: "#2C5282", color: "#FFFFFF", border: "none", borderRadius: 14, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+          <button onClick={() => onNavigate("map")} style={{ flex: 1, padding: "14px", background: "#2C5282", color: "#FFFFFF", border: "none", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer" }}>
             🗺 Explore the Map
           </button>
-          <button onClick={() => onNavigate("faq")} style={{ flex: 1, padding: "14px", background: "#FFFFFF", color: "#2C5282", border: "2px solid #2C5282", borderRadius: 14, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+          <button onClick={() => onNavigate("faq")} style={{ flex: 1, padding: "14px", background: "#FFFFFF", color: "#2C5282", border: "2px solid #2C5282", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer" }}>
             Read the FAQ
           </button>
         </div>
@@ -4910,8 +4910,6 @@ function AboutPage({ onNavigate }) {
 
 // ─── FAQ PAGE ─────────────────────────────────────────────────────────────────
 function FAQPage({ onNavigate }) {
-  const [openIdx, setOpenIdx] = useState(null);
-
   const FAQS = [
     {
       category: "About Oxalates",
@@ -4984,38 +4982,29 @@ function FAQPage({ onNavigate }) {
       {/* Hero */}
       <div style={{ background: "#2C5282", padding: "32px 22px 36px" }}>
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>Frequently Asked Questions</div>
-        <div style={{ fontSize: 26, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.2, marginBottom: 10 }}>
+        <div style={{ fontSize: 30, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.2, marginBottom: 10 }}>
           Questions about oxalates,<br />kidney stones, and LOxalate.
         </div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>Tap any question to expand</div>
       </div>
 
       <div style={{ padding: "22px 18px 0" }}>
         {FAQS.map((section, si) => (
           <div key={si} style={{ marginBottom: 24 }}>
             {/* Category header */}
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#7AAFD4", textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 10, paddingLeft: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#7AAFD4", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12, paddingLeft: 4 }}>
               {section.category}
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {section.questions.map((item, qi) => {
-                const idx = `${si}-${qi}`;
-                const isOpen = openIdx === idx;
                 return (
-                  <div key={qi} style={{ background: "#FFFFFF", borderRadius: 14, border: `1.5px solid ${isOpen ? "#7AAFD4" : "#BFDBFE"}`, overflow: "hidden", transition: "border-color 0.2s", boxShadow: "0 2px 8px rgba(44,82,130,0.05)" }}>
-                    <button
-                      onClick={() => setOpenIdx(isOpen ? null : idx)}
-                      style={{ width: "100%", padding: "16px 18px", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, textAlign: "left" }}
-                    >
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", lineHeight: 1.4, flex: 1 }}>{item.q}</span>
-                      <span style={{ fontSize: 18, color: "#7AAFD4", flexShrink: 0, transition: "transform 0.2s", transform: isOpen ? "rotate(45deg)" : "rotate(0deg)", display: "block" }}>+</span>
-                    </button>
-                    {isOpen && (
-                      <div style={{ padding: "0 18px 18px", borderTop: "1px solid #EEF4FB" }}>
-                        <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.8, margin: "14px 0 0" }}>{item.a}</p>
-                      </div>
-                    )}
+                  <div key={qi} style={{ background: "#FFFFFF", borderRadius: 16, border: "1.5px solid #BFDBFE", overflow: "hidden", boxShadow: "0 2px 8px rgba(44,82,130,0.05)" }}>
+                    <div style={{ padding: "18px 20px 6px" }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b", lineHeight: 1.4 }}>{item.q}</div>
+                    </div>
+                    <div style={{ padding: "10px 20px 20px" }}>
+                      <p style={{ fontSize: 15, color: "#374151", lineHeight: 1.85, margin: 0 }}>{item.a}</p>
+                    </div>
                   </div>
                 );
               })}
@@ -5026,7 +5015,7 @@ function FAQPage({ onNavigate }) {
         {/* Still have questions */}
         <div style={{ background: "#2C5282", borderRadius: 18, padding: "22px", marginBottom: 8 }}>
           <div style={{ fontSize: 16, fontWeight: 900, color: "#FFFFFF", marginBottom: 8 }}>Still have questions?</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6, marginBottom: 16 }}>
+          <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", lineHeight: 1.7, marginBottom: 16 }}>
             Ask the community — someone's probably been through the same thing.
           </div>
           <button onClick={() => onNavigate("community")} style={{ padding: "11px 22px", background: "#7AAFD4", color: "#FFFFFF", border: "none", borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
@@ -5233,7 +5222,7 @@ function CommunityPage({ onNavigate = () => {} }) {
               <div style={{ fontSize: 16, fontWeight: 900, color: "#2C5282" }}>📍 Request a Restaurant</div>
               <button onClick={() => { setShowRequest(false); setReqError(""); }} style={{ background: "none", border: "none", color: "#6E7187", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
             </div>
-            <div style={{ fontSize: 12, color: "#6E7187", lineHeight: 1.6, marginBottom: 16, background: "#F7F9FC", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6, marginBottom: 16, background: "#F7F9FC", borderRadius: 10, padding: "10px 12px" }}>
               Know a restaurant with great low-oxalate options? Tell us and we'll research and add it to the map.
             </div>
 
@@ -5243,7 +5232,7 @@ function CommunityPage({ onNavigate = () => {} }) {
               <input value={reqName} onChange={e => { setReqName(e.target.value); setReqError(""); }}
                 placeholder="e.g. Café de Leche"
                 maxLength={80}
-                style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
                 onFocus={e => e.target.style.borderColor = "#7AAFD4"}
                 onBlur={e => e.target.style.borderColor = "#BFDBFE"}
               />
@@ -5255,7 +5244,7 @@ function CommunityPage({ onNavigate = () => {} }) {
               <input value={reqAddress} onChange={e => setReqAddress(e.target.value)}
                 placeholder="e.g. 123 Colorado Blvd, Pasadena CA"
                 maxLength={120}
-                style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
                 onFocus={e => e.target.style.borderColor = "#7AAFD4"}
                 onBlur={e => e.target.style.borderColor = "#BFDBFE"}
               />
@@ -5267,7 +5256,7 @@ function CommunityPage({ onNavigate = () => {} }) {
               <input value={reqDish} onChange={e => { setReqDish(e.target.value); setReqError(""); }}
                 placeholder="e.g. Grilled Salmon Bowl"
                 maxLength={80}
-                style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
                 onFocus={e => e.target.style.borderColor = "#7AAFD4"}
                 onBlur={e => e.target.style.borderColor = "#BFDBFE"}
               />
@@ -5280,7 +5269,7 @@ function CommunityPage({ onNavigate = () => {} }) {
                 placeholder="List the main ingredients you know about..."
                 maxLength={500}
                 rows={3}
-                style={{ width: "100%", padding: "10px 12px", fontSize: 13, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical", lineHeight: 1.6 }}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical", lineHeight: 1.6 }}
                 onFocus={e => e.target.style.borderColor = "#7AAFD4"}
                 onBlur={e => e.target.style.borderColor = "#BFDBFE"}
               />
@@ -5305,8 +5294,8 @@ function CommunityPage({ onNavigate = () => {} }) {
                 />
                 <span style={{ fontSize: 22 }}>📸</span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#2C5282" }}>Take a photo or upload</div>
-                  <div style={{ fontSize: 11, color: "#6E7187" }}>Snap the menu to help us identify ingredients</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: "#2C5282" }}>Take a photo or upload</div>
+                  <div style={{ fontSize: 14, color: "#6E7187" }}>Snap the menu to help us identify ingredients</div>
                 </div>
               </label>
               {reqPhotoPreview && (
@@ -5326,7 +5315,7 @@ function CommunityPage({ onNavigate = () => {} }) {
             <button onClick={submitRequest} style={{
               width: "100%", padding: "14px", background: reqSubmitted ? "#7AAFD4" : "#2C5282",
               color: "#FFFFFF", border: "none", borderRadius: 12,
-              fontSize: 14, fontWeight: 800, cursor: "pointer", transition: "all 0.2s"
+              fontSize: 16, fontWeight: 800, cursor: "pointer", transition: "all 0.2s"
             }}>
               {reqSubmitted ? "✓ Request Submitted! Thank you!" : "Submit Request"}
             </button>
@@ -5355,7 +5344,7 @@ function CommunityPage({ onNavigate = () => {} }) {
             <input value={name} onChange={e => { setName(e.target.value); setFormError(""); }}
               placeholder="Your name or nickname"
               maxLength={50}
-              style={{ width: "100%", padding: "10px 12px", marginBottom: 10, fontSize: 13, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "10px 12px", marginBottom: 10, fontSize: 15, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
             />
 
             {/* Content — character counter + maxLength */}
@@ -5367,7 +5356,7 @@ function CommunityPage({ onNavigate = () => {} }) {
                   postType === "event"  ? "Tell us about your event — when, where, what to bring..." :
                                          "How did your week go? Share your total mg and any wins..."
                 }
-                style={{ width: "100%", padding: "10px 12px 26px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px 26px", fontSize: 15, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
               />
               <span style={{ position: "absolute", bottom: 8, right: 10, fontSize: 11, color: content.length > 900 ? "#ef4444" : "#B0B3C4", pointerEvents: "none" }}>
                 {content.length}/1000
@@ -5380,7 +5369,7 @@ function CommunityPage({ onNavigate = () => {} }) {
                 <span style={{ fontSize: 18 }}>📊</span>
                 <input type="number" value={oxTotal} onChange={e => { setOxTotal(e.target.value); setFormError(""); }}
                   placeholder="e.g. 450" min={0} max={99999}
-                  style={{ width: 80, padding: "6px 8px", fontSize: 15, fontWeight: 700, border: "1px solid #7dd3fc", borderRadius: 6, outline: "none", fontFamily: "inherit", textAlign: "center" }}
+                  style={{ width: 80, padding: "6px 8px", fontSize: 17, fontWeight: 700, border: "1px solid #7dd3fc", borderRadius: 6, outline: "none", fontFamily: "inherit", textAlign: "center" }}
                 />
                 <span style={{ fontSize: 13, color: "#7AAFD4", fontWeight: 600 }}>mg total this week</span>
               </div>
@@ -5394,13 +5383,13 @@ function CommunityPage({ onNavigate = () => {} }) {
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => { setShowForm(false); setFormError(""); }} style={{ flex: 1, padding: "10px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#FFFFFF", color: "#6E7187", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={() => { setShowForm(false); setFormError(""); }} style={{ flex: 1, padding: "10px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#FFFFFF", color: "#6E7187", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
                 Cancel
               </button>
               <button onClick={submitPost} disabled={posting || !name.trim() || !content.trim()} style={{
                 flex: 2, padding: "10px", borderRadius: 12, border: "none",
                 background: posting || !name.trim() || !content.trim() ? "#A8DEC0" : "#7AAFD4",
-                color: "white", fontSize: 14, fontWeight: 700,
+                color: "white", fontSize: 16, fontWeight: 700,
                 cursor: posting ? "wait" : "pointer", transition: "background 0.15s"
               }}>{posting ? "Posting..." : "Post to Community"}</button>
             </div>
@@ -5409,7 +5398,7 @@ function CommunityPage({ onNavigate = () => {} }) {
 
         {/* ── Rate limit toast ── */}
         {rateLimitMsg && (
-          <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", zIndex: 999, background: "#1f2937", color: "white", padding: "10px 20px", borderRadius: 999, fontSize: 13, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", whiteSpace: "nowrap" }}>
+          <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", zIndex: 999, background: "#1f2937", color: "white", padding: "10px 20px", borderRadius: 999, fontSize: 15, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", whiteSpace: "nowrap" }}>
             {rateLimitMsg}
           </div>
         )}
@@ -5439,10 +5428,10 @@ function CommunityPage({ onNavigate = () => {} }) {
             <div style={{ fontSize: 48, marginBottom: 12 }}>
               {filterType === "recipe" ? "🥗" : filterType === "event" ? "📅" : filterType === "weekly" ? "📊" : "🌱"}
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#374151", marginBottom: 6 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#374151", marginBottom: 6 }}>
               {posts.length === 0 ? "Be the first to post!" : "Nothing here yet"}
             </div>
-            <div style={{ fontSize: 13, color: "#6E7187", lineHeight: 1.6 }}>
+            <div style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6 }}>
               {posts.length === 0
                 ? "Share a recipe, plan a picnic, or post your weekly oxalate total to get things started."
                 : "Be the first to share one of these!"}
@@ -5471,8 +5460,8 @@ function CommunityPage({ onNavigate = () => {} }) {
                         {post.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{post.name}</div>
-                        <div style={{ fontSize: 11, color: "#6E7187" }}>{timeAgo(post.ts)}</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{post.name}</div>
+                        <div style={{ fontSize: 14, color: "#6E7187" }}>{timeAgo(post.ts)}</div>
                       </div>
                     </div>
                     <span style={{
@@ -5491,11 +5480,11 @@ function CommunityPage({ onNavigate = () => {} }) {
                     }}>
                       <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, color: post.oxTotal < 350 ? "#7AAFD4" : post.oxTotal < 700 ? "#d97706" : "#dc2626" }}>
                         {post.oxTotal}
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>mg</span>
+                        <span style={{ fontSize: 15, fontWeight: 600 }}>mg</span>
                       </div>
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Weekly Total</div>
-                        <div style={{ fontSize: 12, color: "#6E7187" }}>
+                        <div style={{ fontSize: 14, color: "#6E7187" }}>
                           {post.oxTotal < 350 ? "🏆 Outstanding week!" : post.oxTotal < 700 ? "👍 On track" : "💪 Keep going, every day counts"}
                         </div>
                       </div>
@@ -5503,7 +5492,7 @@ function CommunityPage({ onNavigate = () => {} }) {
                   )}
 
                   {/* Post body */}
-                  <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.65, whiteSpace: "pre-wrap", marginBottom: 14 }}>
+                  <div style={{ fontSize: 15, color: "#374151", lineHeight: 1.65, whiteSpace: "pre-wrap", marginBottom: 14 }}>
                     {post.content}
                   </div>
 
@@ -5521,7 +5510,7 @@ function CommunityPage({ onNavigate = () => {} }) {
                     >
                       {isLiked ? "❤️" : "🤍"} {post.likes || 0}
                     </button>
-                    <span style={{ fontSize: 12, color: "#6E7187" }}>
+                    <span style={{ fontSize: 14, color: "#6E7187" }}>
                       {post.type === "recipe" ? "Tap ❤️ if you'd make this" :
                        post.type === "event"  ? "Tap ❤️ if you're interested" :
                                                "Tap ❤️ to cheer them on"}
@@ -5558,7 +5547,7 @@ function CommunityPage({ onNavigate = () => {} }) {
               background: "#2C5282",
               color: "#FFFFFF", border: "none",
               borderRadius: 999,
-              fontSize: 14, fontWeight: 800, cursor: "pointer",
+              fontSize: 16, fontWeight: 800, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               boxShadow: "0 8px 24px rgba(44,82,130,0.35)",
               transition: "transform 0.15s"
@@ -5578,7 +5567,7 @@ function CommunityPage({ onNavigate = () => {} }) {
               color: "#2C5282",
               border: "2.5px solid #2C5282",
               borderRadius: 999,
-              fontSize: 14, fontWeight: 800, cursor: "pointer",
+              fontSize: 16, fontWeight: 800, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               boxShadow: "0 8px 24px rgba(44,82,130,0.15)",
               transition: "transform 0.15s"
@@ -5734,7 +5723,7 @@ export default function RestaurantMap() {
           }}>
             {profile.name ? profile.name.charAt(0).toUpperCase() : "👤"}
           </div>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#FFFFFF", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#FFFFFF", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {profile.name || "Profile"}
           </span>
         </button>
@@ -5747,7 +5736,7 @@ export default function RestaurantMap() {
           <div style={{ background: "#FFFFFF", borderBottom: "1px solid #e5e7eb", display: "flex", overflowX: "auto" }}>
             {[["map","🗺 Find Restaurant"],["dish","🍽 Search Dish"]].map(([id, label]) => (
               <button key={id} onClick={() => setActiveTab(id)} style={{
-                padding: "10px 16px", fontSize: 13, fontWeight: 600, border: "none", background: "none",
+                padding: "10px 16px", fontSize: 15, fontWeight: 600, border: "none", background: "none",
                 cursor: "pointer", color: activeTab === id ? "#7AAFD4" : "#6E7187",
                 borderBottom: activeTab === id ? "2px solid #7AAFD4" : "2px solid transparent",
                 whiteSpace: "nowrap", flexShrink: 0
@@ -5767,7 +5756,7 @@ export default function RestaurantMap() {
                       onFocus={() => setShowSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowSuggestions(false), 160)}
                       placeholder="Search restaurant or neighborhood..."
-                      style={{ width: "100%", padding: "8px 32px 8px 12px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                      style={{ width: "100%", padding: "8px 32px 8px 12px", fontSize: 15, border: "1px solid #d1d5db", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
                     />
                     {query && <button onClick={() => { setQuery(""); setSelectedRestaurant(null); }} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6E7187", cursor: "pointer", fontSize: 18 }}>×</button>}
                     {showSuggestions && suggestions.length > 0 && (
@@ -5779,8 +5768,8 @@ export default function RestaurantMap() {
                             onMouseLeave={e => e.currentTarget.style.background = ""}
                           >
                             <div>
-                              <div style={{ fontSize: 13, fontWeight: 600 }}>{r.name}</div>
-                              <div style={{ fontSize: 12, color: "#6E7187" }}>{r.area} · {r.type}{r.options.length > 0 ? ` · ${r.options.length} dishes` : ""}</div>
+                              <div style={{ fontSize: 15, fontWeight: 600 }}>{r.name}</div>
+                              <div style={{ fontSize: 14, color: "#6E7187" }}>{r.area} · {r.type}{r.options.length > 0 ? ` · ${r.options.length} dishes` : ""}</div>
                             </div>
                             {(() => {
                               const avg = r.options.length > 0 ? Math.round(r.options.reduce((s,o) => s+(o.total||0),0)/r.options.length*10)/10 : null;
@@ -5795,7 +5784,7 @@ export default function RestaurantMap() {
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {[["all",`All (${RESTAURANTS.length})`],["low","✓ Low Oxalate"],["high","⚠ High Oxalate"]].map(([id, label]) => (
                       <button key={id} onClick={() => setFilter(id)} style={{
-                        padding: "5px 11px", fontSize: 13, fontWeight: 600, borderRadius: 10, cursor: "pointer", border: "1px solid",
+                        padding: "5px 11px", fontSize: 15, fontWeight: 600, borderRadius: 10, cursor: "pointer", border: "1px solid",
                         background: filter === id ? (id==="low"?"#2C5282":id==="high"?"#dc2626":"#2C5282") : "#FFFFFF",
                         borderColor: filter === id ? (id==="low"?"#2C5282":id==="high"?"#dc2626":"#2C5282") : "#CBD5E1",
                         color: filter === id ? "#ffffff" : "#6E7187"
@@ -5844,8 +5833,8 @@ export default function RestaurantMap() {
                     <div style={{ marginTop: 16 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                         <div style={{ width: 3, height: 18, background: "#7AAFD4", borderRadius: 2 }} />
-                        <div style={{ fontSize: 15, fontWeight: 800, color: "#111827" }}>Lowest Oxalate Picks</div>
-                        <div style={{ fontSize: 11, color: "#6E7187" }}>0–7mg · one per restaurant</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: "#111827" }}>Lowest Oxalate Picks</div>
+                        <div style={{ fontSize: 14, color: "#6E7187" }}>0–7mg · one per restaurant</div>
                       </div>
                       <div ref={picksScrollRef} style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6, scrollbarWidth: "none", msOverflowStyle: "none", cursor: "grab" }}>
                         {loopPicks.map((p, i) => {
@@ -5859,7 +5848,7 @@ export default function RestaurantMap() {
                               <div style={{ fontSize: 26, marginBottom: 6, lineHeight: 1 }}>{p.emoji}</div>
                               <div style={{ fontSize: 20, fontWeight: 900, color: col, lineHeight: 1, marginBottom: 4 }}>{p.total}<span style={{ fontSize: 11, fontWeight: 600, color: "#6E7187" }}>mg</span></div>
                               <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 3 }}>{p.dish}</div>
-                              <div style={{ fontSize: 11, color: "#6E7187" }}>{p.restaurantName}</div>
+                              <div style={{ fontSize: 14, color: "#6E7187" }}>{p.restaurantName}</div>
                             </div>
                           );
                         })}
@@ -5876,7 +5865,7 @@ export default function RestaurantMap() {
                 <div style={{ position: "relative", marginBottom: 12 }}>
                   <input value={mealQuery} onChange={e => setMealQuery(e.target.value)}
                     placeholder="Search dishes or ingredients…"
-                    style={{ width: "100%", padding: "10px 36px 10px 14px", fontSize: 13, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                    style={{ width: "100%", padding: "10px 36px 10px 14px", fontSize: 15, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
                   />
                   {mealQuery && <button onClick={() => setMealQuery("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6E7187", cursor: "pointer", fontSize: 18 }}>×</button>}
                 </div>
@@ -5902,8 +5891,8 @@ export default function RestaurantMap() {
                           onMouseLeave={e => { e.currentTarget.style.borderColor = "#CBD5E1"; e.currentTarget.style.background = "#FFFFFF"; }}
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 2 }}>{dish.dish}</div>
-                            <div style={{ fontSize: 12, color: "#6E7187" }}>{dish.restaurantName} · {dish.restaurantArea}</div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 2 }}>{dish.dish}</div>
+                            <div style={{ fontSize: 14, color: "#6E7187" }}>{dish.restaurantName} · {dish.restaurantArea}</div>
                           </div>
                           <div style={{ textAlign: "center", flexShrink: 0 }}>
                             <div style={{ fontSize: 26, fontWeight: 800, color: col, lineHeight: 1 }}>{dish.total}</div>
@@ -5956,7 +5945,7 @@ export default function RestaurantMap() {
                 <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 32, height: 3, background: "#7AAFD4", borderRadius: "0 0 6px 6px" }} />
               )}
               {icon(active)}
-              <span style={{ fontSize: 11, fontWeight: active ? 800 : 500, color: active ? "#2C5282" : "#6E7187", letterSpacing: active ? "0.01em" : 0 }}>{label}</span>
+              <span style={{ fontSize: 13, fontWeight: active ? 800 : 500, color: active ? "#2C5282" : "#6E7187", letterSpacing: active ? "0.01em" : 0 }}>{label}</span>
             </button>
           );
         })}
