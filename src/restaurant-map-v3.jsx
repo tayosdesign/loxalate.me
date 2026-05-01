@@ -2201,26 +2201,24 @@ const ALL_DISHES = RESTAURANTS.flatMap(r =>
 
 function LeafletMap({ restaurants, selectedRestaurant, onSelectRestaurant, filter }) {
   const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
-  const markersRef = useRef({});
+  const mapRef          = useRef(null);
+  const markersRef      = useRef({});
   const [leafletReady, setLeafletReady] = useState(false);
 
-  // Load Leaflet CSS + JS from CDN once
+  // ── Load Leaflet CSS + JS once ───────────────────────────────────────────
   useEffect(() => {
     if (window.L) { setLeafletReady(true); return; }
-
     const css = document.createElement("link");
     css.rel = "stylesheet";
     css.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
     document.head.appendChild(css);
-
     const script = document.createElement("script");
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
     script.onload = () => setLeafletReady(true);
     document.head.appendChild(script);
   }, []);
 
-  // Initialize map once Leaflet is ready
+  // ── Initialize map ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!leafletReady || !mapContainerRef.current || mapRef.current) return;
     const L = window.L;
@@ -2228,91 +2226,130 @@ function LeafletMap({ restaurants, selectedRestaurant, onSelectRestaurant, filte
     mapRef.current = L.map(mapContainerRef.current, {
       center: [34.145, -118.155],
       zoom: 13,
-      zoomControl: false,  // disable default — it floats on scroll
+      zoomControl: false,
     });
 
-    // Re-add zoom control anchored inside the map container (bottom-right)
-    L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
-
+    // Original OSM tiles — proven working
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(mapRef.current);
+
+    L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
+
   }, [leafletReady]);
 
-  // Add/update markers whenever restaurants or filter changes
+  // ── Build / refresh markers ──────────────────────────────────────────────
   useEffect(() => {
     if (!leafletReady || !mapRef.current) return;
-    const L = window.L;
+    const L   = window.L;
     const map = mapRef.current;
 
-    // Clear existing markers
     Object.values(markersRef.current).forEach(m => map.removeLayer(m));
     markersRef.current = {};
 
-    const filtered = restaurants.filter(r => {
-      if (filter === "low") return r.hasLowOxalate;
+    const visible = restaurants.filter(r => {
+      if (filter === "low")  return r.hasLowOxalate;
       if (filter === "high") return !r.hasLowOxalate;
       return true;
     });
 
-    filtered.forEach(r => {
-      const hasMenu = r.options.length > 0;
-
-      // ── Avg oxalate calculation ──────────────────────────────────────────
+    visible.forEach(r => {
+      const hasMenu    = r.options.length > 0;
       const avgOxalate = hasMenu
-        ? Math.round(r.options.reduce((sum, o) => sum + (o.total || 0), 0) / r.options.length * 10) / 10
+        ? Math.round(r.options.reduce((s, o) => s + (o.total || 0), 0) / r.options.length * 10) / 10
         : null;
 
-      // ── Ring color based on avg ──────────────────────────────────────────
-      // green ≤10 · yellow 11–25 · red >25 · gray = no data
-      const ringColor = avgOxalate === null ? "#9ca3af"
-        : avgOxalate <= 10  ? "#7AAFD4"
-        : avgOxalate <= 25  ? "#f59e0b"
-        : "#ef4444";
+      const pinColor   = avgOxalate === null ? "#C8BEBB"
+        : avgOxalate <= 10 ? "#7AAFD4"
+        : avgOxalate <= 25 ? "#F5C518"
+        : "#E05540";
+      const label      = avgOxalate === null ? "?" : avgOxalate <= 10 ? "Low" : avgOxalate <= 25 ? "Med" : "High";
+      const isSelected = selectedRestaurant?.name === r.name;
+      const avgText    = avgOxalate !== null ? `${avgOxalate}` : "?";
 
-      const ringLabel = avgOxalate === null ? "?" : avgOxalate <= 10 ? "Low" : avgOxalate <= 25 ? "Med" : "High";
+      // ── White pill, color dot + number, teardrop tail ─────────────────
+      // Pill is compact: ~46px wide × 24px tall + 7px tail
+      // iconAnchor at the tip of the tail so pin points exactly to location
+      const PH   = isSelected ? 28 : 22;   // pill height
+      const PW   = isSelected ? 60 : 50;   // pill width (fixed, no text overflow)
+      const TH   = 7;                       // tail height
+      const totalH = PH + TH;
 
-      const isSelected = selectedRestaurant && selectedRestaurant.name === r.name;
-      const size = isSelected ? 22 : 17;
+      const pulseRing = isSelected ? `
+        <div style="
+          position:absolute;
+          top:${-(PH * 0.45)}px; left:${-(PW * 0.22)}px;
+          width:${PW * 1.44}px; height:${PH * 1.9}px;
+          border-radius:${PH}px;
+          border:2px solid ${pinColor}50;
+          animation:pinPulse 1.8s ease-out infinite;
+          pointer-events:none;
+        "></div>` : "";
 
-      // ── Pin HTML — avg number + color ring ──────────────────────────────
-      const avgDisplay = avgOxalate !== null ? `${avgOxalate}` : "?";
-      const fontSize   = avgDisplay.length >= 4 ? 8 : avgDisplay.length === 3 ? 9 : 10;
+      const dotSize  = isSelected ? 9 : 7;
+      const fontSize = isSelected ? 12 : 10;
+      const fw       = isSelected ? 800 : 700;
 
       const icon = L.divIcon({
         className: "",
-        html: `<div style="
-            position:relative;
-            width:${size*2}px; height:${size*2}px;
-            background:${isSelected ? ringColor : "#FFFFFF"};
-            border:${isSelected ? 3 : 2.5}px solid ${ringColor};
-            border-radius:50%;
-            box-shadow:0 2px 8px rgba(0,0,0,0.28), 0 0 0 ${isSelected ? 3 : 0}px ${ringColor}44;
-            display:flex; align-items:center; justify-content:center;
-            transition:all 0.15s;
-          ">
-          <span style="
-            font-family:ui-sans-serif,system-ui,sans-serif;
-            font-size:${fontSize}px; font-weight:800; line-height:1;
-            color:${isSelected ? "#FFFFFF" : ringColor};
-            letter-spacing:-0.03em;
-          ">${avgDisplay}</span>
-        </div>`,
-        iconSize:   [size * 2, size * 2],
-        iconAnchor: [size, size],
+        html: `
+          <div style="position:relative; width:${PW}px; height:${totalH}px;">
+            ${pulseRing}
+            <!-- Pill body -->
+            <div style="
+              position:absolute; top:0; left:0;
+              width:${PW}px; height:${PH}px;
+              background:#FFFFFF;
+              border:2px solid ${pinColor};
+              border-radius:${PH}px;
+              box-shadow: ${isSelected
+                ? `0 4px 16px ${pinColor}55, 0 2px 8px rgba(0,0,0,0.15)`
+                : `0 2px 8px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.08)`};
+              display:flex; align-items:center; justify-content:center; gap:4px;
+            ">
+              <div style="
+                width:${dotSize}px; height:${dotSize}px; border-radius:50%;
+                background:${pinColor}; flex-shrink:0;
+              "></div>
+              <span style="
+                font-family:ui-sans-serif,system-ui,sans-serif;
+                font-size:${fontSize}px; font-weight:${fw};
+                color:#1E4A60; line-height:1; letter-spacing:-0.02em;
+              ">${avgText}mg</span>
+            </div>
+            <!-- Tail triangle pointing down -->
+            <div style="
+              position:absolute;
+              top:${PH - 1}px;
+              left:${PW / 2 - 5}px;
+              width:0; height:0;
+              border-left:5px solid transparent;
+              border-right:5px solid transparent;
+              border-top:${TH}px solid ${pinColor};
+            "></div>
+          </div>`,
+        iconSize:   [PW, totalH],
+        iconAnchor: [PW / 2, totalH],   // anchor = tip of tail
       });
 
       const marker = L.marker([r.lat, r.lng], { icon });
       marker.on("click", () => onSelectRestaurant(r));
 
-      // ── Tooltip ──────────────────────────────────────────────────────────
+      // ── Tooltip ───────────────────────────────────────────────────────
       const avgLine = avgOxalate !== null
-        ? `<span style="color:${ringColor};font-size:11px;font-weight:700;">⬤ ${avgOxalate}mg avg · ${ringLabel}</span>`
-        : `<span style="color:#9ca3af;font-size:11px;">No dish data yet</span>`;
+        ? `<div style="display:flex;align-items:center;gap:5px;margin-top:4px;">
+             <div style="width:8px;height:8px;border-radius:50%;background:${pinColor};flex-shrink:0;"></div>
+             <span style="color:${pinColor};font-size:11px;font-weight:700;">${avgOxalate}mg avg · ${label}</span>
+           </div>`
+        : `<span style="color:#C8BEBB;font-size:11px;">No dish data yet</span>`;
+      const menuLine = hasMenu
+        ? `<div style="font-size:10px;color:#8AAFC0;margin-top:3px;">📋 ${r.options.length} dish${r.options.length !== 1 ? "es" : ""} on menu</div>`
+        : "";
+
       marker.bindTooltip(
-        `<b>${r.name}</b><br>${avgLine}${hasMenu ? `<br><span style="color:#6E7187;font-size:10px;">📋 ${r.options.length} dish${r.options.length !== 1 ? "es" : ""} mapped</span>` : ""}`,
-        { direction: "top", offset: [0, -(size + 4)], className: "oxalate-tooltip" }
+        `<div style="font-weight:700;font-size:13px;color:#3A7090;line-height:1.2;">${r.name}</div>${avgLine}${menuLine}`,
+        { direction: "top", offset: [0, -(totalH + 4)], className: "ox-tip" }
       );
 
       marker.addTo(map);
@@ -2320,48 +2357,111 @@ function LeafletMap({ restaurants, selectedRestaurant, onSelectRestaurant, filte
     });
   }, [leafletReady, restaurants, filter, selectedRestaurant, onSelectRestaurant]);
 
-  // Pan to selected restaurant
+  // ── Pan to selected ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!leafletReady || !mapRef.current || !selectedRestaurant) return;
-    mapRef.current.panTo([selectedRestaurant.lat, selectedRestaurant.lng], { animate: true, duration: 0.4 });
+    mapRef.current.panTo([selectedRestaurant.lat, selectedRestaurant.lng], { animate: true, duration: 0.5 });
   }, [leafletReady, selectedRestaurant]);
 
   return (
-    <div style={{ position: "relative", borderRadius: 14, overflow: "hidden", border: "1px solid #bfdbfe" }}>
+    <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", border: "1.5px solid #D4E7F2", boxShadow: "0 4px 24px rgba(58,112,144,0.10)" }}>
       <style>{`
-        .oxalate-tooltip {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 6px 10px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          font-family: ui-sans-serif, system-ui, sans-serif;
-          font-size: 13px;
-          line-height: 1.5;
+        @keyframes pinPulse {
+          0%   { opacity: 0.7; transform: scale(1); }
+          100% { opacity: 0;   transform: scale(1.9); }
         }
-        .oxalate-tooltip::before { display: none; }
-        .leaflet-control-attribution { font-size: 9px !important; }
+
+        /* Tooltip card */
+        .ox-tip {
+          background: #fff !important;
+          border: 1.5px solid #D4E7F2 !important;
+          border-radius: 12px !important;
+          padding: 9px 13px !important;
+          box-shadow: 0 8px 28px rgba(58,112,144,0.18) !important;
+          font-family: ui-sans-serif, system-ui, sans-serif !important;
+          line-height: 1.45 !important;
+        }
+        .ox-tip::before,
+        .ox-tip.leaflet-tooltip-top::before { display: none !important; }
+
+        /* Zoom controls */
+        .leaflet-control-zoom {
+          border: none !important;
+          border-radius: 14px !important;
+          overflow: hidden;
+          box-shadow: 0 4px 16px rgba(58,112,144,0.2) !important;
+        }
+        .leaflet-control-zoom a {
+          background: #fff !important;
+          color: #3A7090 !important;
+          border: none !important;
+          border-bottom: 1px solid #E8F4FB !important;
+          font-size: 20px !important;
+          font-weight: 300 !important;
+          width: 36px !important;
+          height: 36px !important;
+          line-height: 36px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          transition: background 0.15s !important;
+        }
+        .leaflet-control-zoom a:hover { background: #EEF6FC !important; }
+        .leaflet-control-zoom-out { border-bottom: none !important; }
+
+        /* Attribution */
+        .leaflet-control-attribution {
+          font-size: 8px !important;
+          background: rgba(255,255,255,0.55) !important;
+          backdrop-filter: blur(6px) !important;
+          border-radius: 8px 0 0 0 !important;
+          padding: 2px 6px !important;
+        }
+
+        /* Slightly boost CartoDB Voyager contrast */
+        .leaflet-tile-pane {
+          filter: saturate(1.1) brightness(1.02);
+        }
       `}</style>
+
       {!leafletReady && (
-        <div style={{ height: 420, background: "#7AAFD4", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ textAlign: "center", color: "#6E7187" }}>
-            <div style={{ fontSize: 24, marginBottom: 8 }}>🗺️</div>
-            <div style={{ fontSize: 13 }}>Loading map...</div>
+        <div style={{ height: 420, background: "linear-gradient(135deg, #D4E7F2 0%, #FDE8E0 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>🗺️</div>
+            <div style={{ fontSize: 13, color: "#3A7090", fontWeight: 600 }}>Loading map…</div>
           </div>
         </div>
       )}
-      <div ref={mapContainerRef} style={{ height: 420, display: leafletReady ? "block" : "none" }} />
-      {/* Legend */}
 
+      <div ref={mapContainerRef} style={{ height: 420, display: leafletReady ? "block" : "none" }} />
+
+      {/* Floating legend pill */}
+      {leafletReady && (
+        <div style={{
+          position: "absolute", bottom: 12, left: 12, zIndex: 800,
+          background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
+          borderRadius: 999, padding: "5px 12px",
+          boxShadow: "0 2px 12px rgba(58,112,144,0.15)",
+          border: "1px solid rgba(255,255,255,0.8)",
+          display: "flex", alignItems: "center", gap: 10,
+        }}>
+          {[["#7AAFD4","Low"],["#F5C518","Med"],["#E05540","High"],["#C8BEBB","?"]].map(([c,l]) => (
+            <div key={l} style={{ display:"flex", alignItems:"center", gap:4 }}>
+              <div style={{ width:7, height:7, borderRadius:"50%", background:c }} />
+              <span style={{ fontSize:10, fontWeight:600, color:"#3A7090" }}>{l}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function oxColor(mg) {
-  if (mg <= 5) return "#22c55e";
-  if (mg <= 15) return "#a3c4e8";
-  if (mg <= 30) return "#f59e0b";
-  return "#ef4444";
+  if (mg <= 5) return "#7AAFD4";
+  if (mg <= 15) return "#7AAFD4";
+  if (mg <= 30) return "#F5C518";
+  return "#E05540";
 }
 function oxLabel(mg) {
   if (mg <= 5) return "Very Low";
@@ -2412,8 +2512,8 @@ function PicksStrip({ picks, onSelect }) {
     <div style={{ marginTop: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
         <div style={{ width: 3, height: 18, background: "#7AAFD4", borderRadius: 2 }} />
-        <div style={{ fontSize: 17, fontWeight: 800, color: "#111827" }}>Lowest Oxalate Picks</div>
-        <div style={{ fontSize: 14, color: "#6E7187" }}>{picks.length} dishes · tap for details</div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "#3A7090" }}>Lowest Oxalate Picks</div>
+        <div style={{ fontSize: 14, color: "#8AAFC0" }}>{picks.length} dishes · tap for details</div>
       </div>
       <div
         ref={scrollRef}
@@ -2427,11 +2527,12 @@ function PicksStrip({ picks, onSelect }) {
               onMouseEnter={e => { e.currentTarget.style.borderColor = col; e.currentTarget.style.boxShadow = `0 4px 12px ${col}22`; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = col + "33"; e.currentTarget.style.boxShadow = "none"; }}
             >
+              <div style={{ width: "100%", height: 66, borderRadius: 10, overflow: "hidden", marginBottom: 8 }}>{p.svg}</div>
               <div style={{ fontSize: 20, fontWeight: 900, color: col, lineHeight: 1, marginBottom: 4 }}>
-                {p.total}<span style={{ fontSize: 11, fontWeight: 600, color: "#6E7187" }}>mg</span>
+                {p.total}<span style={{ fontSize: 11, fontWeight: 600, color: "#8AAFC0" }}>mg</span>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 3 }}>{p.dish}</div>
-              <div style={{ fontSize: 14, color: "#6E7187" }}>{p.restaurantName}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#3A7090", lineHeight: 1.3, marginBottom: 3 }}>{p.dish}</div>
+              <div style={{ fontSize: 14, color: "#8AAFC0" }}>{p.restaurantName}</div>
             </div>
           );
         })}
@@ -2506,16 +2607,16 @@ function DishModal({ dish, onClose, onAdd }) {
           onTouchEnd={onTouchEnd}
           style={{ padding: "14px 0 6px", display: "flex", flexDirection: "column", alignItems: "center", cursor: "grab", flexShrink: 0 }}
         >
-          <div style={{ width: 40, height: 4, background: "#B0B3C4", borderRadius: 2 }} />
-          <div style={{ fontSize: 10, color: "#B0B3C4", marginTop: 4, letterSpacing: "0.06em" }}>SWIPE DOWN TO CLOSE</div>
+          <div style={{ width: 40, height: 4, background: "#D4E7F2", borderRadius: 2 }} />
+          <div style={{ fontSize: 10, color: "#D4E7F2", marginTop: 4, letterSpacing: "0.06em" }}>SWIPE DOWN TO CLOSE</div>
         </div>
 
         <div style={{ overflowY: "auto", padding: "8px 22px 36px" }}>
-          <div style={{ fontSize: 14, color: "#6E7187", marginBottom: 8 }}>
+          <div style={{ fontSize: 14, color: "#8AAFC0", marginBottom: 8 }}>
             {dish.restaurantName} · {dish.restaurantArea}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#111827", lineHeight: 1.3, flex: 1 }}>{dish.dish}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#3A7090", lineHeight: 1.3, flex: 1 }}>{dish.dish}</div>
             <div style={{ textAlign: "center", background: col + "18", border: `2px solid ${col}44`, borderRadius: 14, padding: "8px 14px", flexShrink: 0 }}>
               <div style={{ fontSize: 28, fontWeight: 800, color: col, lineHeight: 1 }}>{dish.total}</div>
               <div style={{ fontSize: 10, color: col, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>mg oxalate</div>
@@ -2523,12 +2624,12 @@ function DishModal({ dish, onClose, onAdd }) {
             </div>
           </div>
           {dish.modifications && dish.modifications !== "None needed" && (
-            <div style={{ background: "#7AAFD4", border: "1px solid #bfdbfe", borderRadius: 12, padding: "8px 12px", marginBottom: 12, fontSize: 13, color: "#2C5282" }}>
+            <div style={{ background: "#7AAFD4", border: "1px solid #D4E7F2", borderRadius: 12, padding: "8px 12px", marginBottom: 12, fontSize: 13, color: "#3A7090" }}>
               <span style={{ fontWeight: 700 }}>Tip: </span>{dish.modifications}
             </div>
           )}
-          <div style={{ fontSize: 14, color: "#6E7187", marginBottom: 14 }}>🍳 {dish.cookingMethod}</div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>Ingredients</div>
+          <div style={{ fontSize: 14, color: "#8AAFC0", marginBottom: 14 }}>🍳 {dish.cookingMethod}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#8AAFC0", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>Ingredients</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
             {dish.ingredients.map((ing, i) => {
               const pct = ing.oxalate === 0 ? 0 : Math.max((ing.oxalate / maxOx) * 100, 6);
@@ -2536,10 +2637,10 @@ function DishModal({ dish, onClose, onAdd }) {
               return (
                 <div key={i}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                    <span style={{ fontSize: 15, color: "#374151", fontWeight: 500 }}>{ing.name}</span>
+                    <span style={{ fontSize: 15, color: "#8AAFC0", fontWeight: 500 }}>{ing.name}</span>
                     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                      <span style={{ fontSize: 14, color: "#6E7187" }}>{ing.amount}</span>
-                      <span style={{ fontSize: 15, fontWeight: 600, color: ing.oxalate === 0 ? "#6E7187" : c, minWidth: 36, textAlign: "right" }}>{ing.oxalate} mg</span>
+                      <span style={{ fontSize: 14, color: "#8AAFC0" }}>{ing.amount}</span>
+                      <span style={{ fontSize: 15, fontWeight: 600, color: ing.oxalate === 0 ? "#8AAFC0" : c, minWidth: 36, textAlign: "right" }}>{ing.oxalate} mg</span>
                     </div>
                   </div>
                   <div style={{ height: 3, background: "#7AAFD4", borderRadius: 2 }}>
@@ -2549,10 +2650,10 @@ function DishModal({ dish, onClose, onAdd }) {
               );
             })}
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 14, borderTop: "1px solid #f3f4f6", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 14, borderTop: "1px solid #FDE8E0", marginBottom: 16 }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#6E7187" }}>Total Oxalate</div>
-              <div style={{ fontSize: 14, color: "#6E7187" }}>Daily target: 50–100mg</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#8AAFC0" }}>Total Oxalate</div>
+              <div style={{ fontSize: 14, color: "#8AAFC0" }}>Daily target: 50–100mg</div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 26, fontWeight: 800, color: col }}>{dish.total} mg</div>
@@ -2599,7 +2700,7 @@ function DishModal({ dish, onClose, onAdd }) {
             ];
             return (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 9 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#8AAFC0", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 9 }}>
                   Order for delivery
                 </div>
                 <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
@@ -2625,7 +2726,7 @@ function DishModal({ dish, onClose, onAdd }) {
                     onClick={handleAdd}
                     style={{
                       display: "flex", alignItems: "center", gap: 10,
-                      background: added ? "#22c55e" : "#7AAFD4",
+                      background: added ? "#7AAFD4" : "#7AAFD4",
                       color: "#FFFFFF", border: "none", borderRadius: 50,
                       padding: "11px 28px", fontSize: 17, fontWeight: 700,
                       cursor: "pointer", transition: "background 0.2s, transform 0.1s",
@@ -2651,7 +2752,7 @@ function DishModal({ dish, onClose, onAdd }) {
                   </button>
                 </div>
 
-                <div style={{ fontSize: 14, color: "#6E7187", textAlign: "center" }}>
+                <div style={{ fontSize: 14, color: "#8AAFC0", textAlign: "center" }}>
                   Opens search for "{dish.restaurantName}" on each platform
                 </div>
               </div>
@@ -2670,19 +2771,19 @@ function MenuPanel({ restaurant, onDishSelect, onClose }) {
   const menuAvg = hasMenu
     ? Math.round(restaurant.options.reduce((s,o) => s+(o.total||0),0) / restaurant.options.length * 10) / 10
     : null;
-  const avgColor = menuAvg===null?"#9ca3af":menuAvg<=10?"#7AAFD4":menuAvg<=25?"#f59e0b":"#ef4444";
+  const avgColor = menuAvg===null?"#C8BEBB":menuAvg<=10?"#7AAFD4":menuAvg<=25?"#F5C518":"#E05540";
   return (
     <div style={{
       background: "#FFFFFF", borderRadius: 16,
-      border: "1px solid #e5e7eb",
+      border: "1px solid #D4E7F2",
       display: "flex", flexDirection: "column",
       boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
     }}>
-      <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid #f3f4f6", flexShrink: 0 }}>
+      <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid #FDE8E0", flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{restaurant.name}</div>
-            <div style={{ fontSize: 14, color: "#6E7187" }}>{restaurant.area} · {restaurant.type}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#3A7090" }}>{restaurant.name}</div>
+            <div style={{ fontSize: 14, color: "#8AAFC0" }}>{restaurant.area} · {restaurant.type}</div>
             {menuAvg !== null && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
                 <div style={{
@@ -2695,7 +2796,7 @@ function MenuPanel({ restaurant, onDishSelect, onClose }) {
                 </div>
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: avgColor }}>{menuAvg}mg avg per dish</div>
-                  <div style={{ fontSize: 10, color: "#9ca3af" }}>across {restaurant.options.length} mapped dish{restaurant.options.length!==1?"es":""}</div>
+                  <div style={{ fontSize: 10, color: "#C8BEBB" }}>across {restaurant.options.length} mapped dish{restaurant.options.length!==1?"es":""}</div>
                 </div>
               </div>
             )}
@@ -2703,14 +2804,14 @@ function MenuPanel({ restaurant, onDishSelect, onClose }) {
           <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
             <span style={{
               padding: "3px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-              background: restaurant.hasLowOxalate ? "#7AAFD4" : "#fef2f2",
-              color: restaurant.hasLowOxalate ? "#7AAFD4" : "#dc2626",
-              border: "1px solid " + (restaurant.hasLowOxalate ? "#93C5FD" : "#fca5a5")
+              background: restaurant.hasLowOxalate ? "#7AAFD4" : "#FDE8E0",
+              color: restaurant.hasLowOxalate ? "#7AAFD4" : "#E05540",
+              border: "1px solid " + (restaurant.hasLowOxalate ? "#D4E7F2" : "#E05540")
             }}>
               {restaurant.hasLowOxalate ? "✓ Low Oxalate" : "⚠ High Oxalate"}
             </span>
             <button onClick={onClose} style={{
-              background: "#7AAFD4", border: "1px solid #e5e7eb", color: "#6E7187",
+              background: "#7AAFD4", border: "1px solid #D4E7F2", color: "#8AAFC0",
               borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 16,
               display: "flex", alignItems: "center", justifyContent: "center"
             }}>×</button>
@@ -2719,14 +2820,14 @@ function MenuPanel({ restaurant, onDishSelect, onClose }) {
       </div>
       <div style={{ overflowY: "auto", padding: "10px 14px", flex: 1 }}>
         {!hasMenu ? (
-          <div style={{ textAlign: "center", padding: "24px 0", color: "#6E7187" }}>
+          <div style={{ textAlign: "center", padding: "24px 0", color: "#8AAFC0" }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🍽</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#6E7187" }}>No detailed menu data</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#8AAFC0" }}>No detailed menu data</div>
             <div style={{ fontSize: 11, marginTop: 4 }}>This location hasn't been mapped yet</div>
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 14, color: "#6E7187", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
+            <div style={{ fontSize: 14, color: "#8AAFC0", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
               Tap a dish for full breakdown
             </div>
             {restaurant.options.map((opt, i) => {
@@ -2735,22 +2836,22 @@ function MenuPanel({ restaurant, onDishSelect, onClose }) {
                 <button key={i} onClick={() => onDishSelect({ ...opt, restaurantName: restaurant.name, restaurantArea: restaurant.area })}
                   style={{
                     width: "100%", textAlign: "left", background: "#FFFFFF",
-                    border: "1px solid #e5e7eb", borderRadius: 12,
+                    border: "1px solid #D4E7F2", borderRadius: 12,
                     padding: "11px 13px", marginBottom: 7, cursor: "pointer",
                     display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#7AAFD4"; e.currentTarget.style.borderColor = "#B8D9C8"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "#FFFFFF"; e.currentTarget.style.borderColor = "#CBD5E1"; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#7AAFD4"; e.currentTarget.style.borderColor = "#D4E7F2"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "#FFFFFF"; e.currentTarget.style.borderColor = "#D4E7F2"; }}
                 >
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 3 }}>{opt.dish}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#3A7090", marginBottom: 3 }}>{opt.dish}</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {opt.ingredients.slice(0, 3).map((ing, j) => (
-                        <span key={j} style={{ fontSize: 14, color: "#6E7187", background: "#7AAFD4", borderRadius: 4, padding: "1px 5px" }}>
+                        <span key={j} style={{ fontSize: 14, color: "#8AAFC0", background: "#7AAFD4", borderRadius: 4, padding: "1px 5px" }}>
                           {ing.name.split(" ")[0]}
                         </span>
                       ))}
-                      {opt.ingredients.length > 3 && <span style={{ fontSize: 14, color: "#6E7187" }}>+{opt.ingredients.length - 3} more</span>}
+                      {opt.ingredients.length > 3 && <span style={{ fontSize: 14, color: "#8AAFC0" }}>+{opt.ingredients.length - 3} more</span>}
                     </div>
                   </div>
                   <div style={{ textAlign: "center", flexShrink: 0 }}>
@@ -2902,7 +3003,7 @@ function TagInput({ tags, onChange, placeholder, suggestions = [], maxTags = 20 
     <div style={{ position: "relative" }}>
       <div style={{
         display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 10px",
-        border: "1.5px solid #d4d4a8", borderRadius: 14, background: "#FFFFFF",
+        border: "1.5px solid #D4E7F2", borderRadius: 14, background: "#FFFFFF",
         minHeight: 44, cursor: "text"
       }} onClick={() => document.getElementById("ti-" + placeholder)?.focus()}>
         {tags.map(tag => (
@@ -2923,18 +3024,18 @@ function TagInput({ tags, onChange, placeholder, suggestions = [], maxTags = 20 
           onFocus={() => setShowSug(true)}
           onBlur={() => setTimeout(() => setShowSug(false), 180)}
           placeholder={tags.length === 0 ? placeholder : ""}
-          style={{ border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#2C5282", fontFamily: "inherit", minWidth: 100, flex: 1 }}
+          style={{ border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#3A7090", fontFamily: "inherit", minWidth: 100, flex: 1 }}
         />
       </div>
       {showSug && (filtered.length > 0 || input.length > 1) && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: "#FFFFFF", border: "1px solid #d4d4a8", borderRadius: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.1)", marginTop: 4, overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.1)", marginTop: 4, overflow: "hidden" }}>
           {input.length > 1 && !filtered.includes(input.trim()) && (
-            <div onMouseDown={() => add(input.trim())} style={{ padding: "9px 12px", cursor: "pointer", fontSize: 13, color: "#7AAFD4", fontWeight: 700, borderBottom: filtered.length ? "1px solid #f0f0e8" : "none" }}>
+            <div onMouseDown={() => add(input.trim())} style={{ padding: "9px 12px", cursor: "pointer", fontSize: 13, color: "#7AAFD4", fontWeight: 700, borderBottom: filtered.length ? "1px solid #FDE8E0" : "none" }}>
               + Add "{input.trim()}"
             </div>
           )}
           {filtered.map(s => (
-            <div key={s} onMouseDown={() => add(s)} style={{ padding: "9px 12px", cursor: "pointer", fontSize: 15, color: "#374151" }}
+            <div key={s} onMouseDown={() => add(s)} style={{ padding: "9px 12px", cursor: "pointer", fontSize: 15, color: "#8AAFC0" }}
               onMouseEnter={e => e.currentTarget.style.background = "#7AAFD4"}
               onMouseLeave={e => e.currentTarget.style.background = ""}
             >{s}</div>
@@ -2961,9 +3062,9 @@ function PillGroup({ options, value, onChange, multi = true, color = "#7AAFD4" }
         return (
           <button key={val} onClick={() => toggle(val)} style={{
             padding: "7px 14px", borderRadius: 999, fontSize: 15, fontWeight: 600, cursor: "pointer",
-            border: `1.5px solid ${active ? color : "#B8D9C8"}`,
+            border: `1.5px solid ${active ? color : "#D4E7F2"}`,
             background: active ? color : "#FFFFFF",
-            color: active ? "#FFFFFF" : "#6E7187",
+            color: active ? "#FFFFFF" : "#8AAFC0",
             transition: "all 0.15s"
           }}>{label}</button>
         );
@@ -2976,7 +3077,7 @@ function PillGroup({ options, value, onChange, multi = true, color = "#7AAFD4" }
 function SectionCard({ number, title, icon, children, accent = "#7AAFD4" }) {
   return (
     <div style={{
-      background: "#FFFFFF", borderRadius: 16, border: "1px solid #6E7187",
+      background: "#FFFFFF", borderRadius: 16, border: "1px solid #8AAFC0",
       overflow: "hidden", marginBottom: 16,
       boxShadow: "0 2px 12px rgba(45,80,22,0.06)"
     }}>
@@ -2993,7 +3094,7 @@ function SectionCard({ number, title, icon, children, accent = "#7AAFD4" }) {
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 11, fontWeight: 900
         }}>{number}</div>
-        <span style={{ fontSize: 16, fontWeight: 800, color: "#2C5282", letterSpacing: "-0.01em" }}>
+        <span style={{ fontSize: 16, fontWeight: 800, color: "#3A7090", letterSpacing: "-0.01em" }}>
           {icon} {title}
         </span>
       </div>
@@ -3007,9 +3108,9 @@ function SectionCard({ number, title, icon, children, accent = "#7AAFD4" }) {
 function Field({ label, children, hint }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{label}</div>
       {children}
-      {hint && <div style={{ fontSize: 14, color: "#6E7187", marginTop: 4 }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 14, color: "#8AAFC0", marginTop: 4 }}>{hint}</div>}
     </div>
   );
 }
@@ -3022,14 +3123,14 @@ function Input({ value, onChange, placeholder, type = "text", unit, min, max }) 
         placeholder={placeholder}
         style={{
           flex: 1, padding: "9px 12px", fontSize: 14, fontWeight: 500,
-          border: "1.5px solid #d4d4a8", borderRadius: 12, outline: "none",
-          background: "#FFFFFF", color: "#2C5282", fontFamily: "inherit",
+          border: "1.5px solid #D4E7F2", borderRadius: 12, outline: "none",
+          background: "#FFFFFF", color: "#3A7090", fontFamily: "inherit",
           boxSizing: "border-box"
         }}
-        onFocus={e => e.currentTarget.style.borderColor = "#2C5282"}
-        onBlur={e => e.currentTarget.style.borderColor = "#B8D9C8"}
+        onFocus={e => e.currentTarget.style.borderColor = "#3A7090"}
+        onBlur={e => e.currentTarget.style.borderColor = "#D4E7F2"}
       />
-      {unit && <span style={{ fontSize: 14, color: "#6E7187", whiteSpace: "nowrap" }}>{unit}</span>}
+      {unit && <span style={{ fontSize: 14, color: "#8AAFC0", whiteSpace: "nowrap" }}>{unit}</span>}
     </div>
   );
 }
@@ -3082,7 +3183,7 @@ const ALCHEMY_RECIPES = [
     title: "Kefir Banana Smoothie",
     category: "Breakfast",
     tag: "Kidney Dietitian Approved",
-    tagColor: "#0284c7",
+    tagColor: "#3A7090",
     source: "Jill Harris RD — Kidney Stone Diet",
     sourceUrl: "https://kidneystonediet.com",
     totalOxalate: 6,
@@ -3108,7 +3209,7 @@ const ALCHEMY_RECIPES = [
     title: "Cauliflower & Egg White Omelet",
     category: "Breakfast",
     tag: "Urology Foundation",
-    tagColor: "#7c3aed",
+    tagColor: "#7AAFD4",
     source: "Urology Care Foundation Cookbook",
     sourceUrl: "https://www.urologyhealth.org",
     totalOxalate: 5,
@@ -3171,7 +3272,7 @@ const ALCHEMY_RECIPES = [
     title: "Cauliflower Rice Stir-Fry with Chicken",
     category: "Lunch",
     tag: "Kidney Dietitian Approved",
-    tagColor: "#0284c7",
+    tagColor: "#3A7090",
     source: "Melanie Betz MS RD — The Kidney Dietitian",
     sourceUrl: "https://www.thekidneydietitian.org",
     totalOxalate: 8,
@@ -3204,7 +3305,7 @@ const ALCHEMY_RECIPES = [
     title: "Black-Eyed Pea & Chicken Soup",
     category: "Lunch",
     tag: "Urology Foundation",
-    tagColor: "#7c3aed",
+    tagColor: "#7AAFD4",
     source: "Urology Care Foundation Cookbook",
     sourceUrl: "https://www.urologyhealth.org",
     totalOxalate: 14,
@@ -3272,7 +3373,7 @@ const ALCHEMY_RECIPES = [
     title: "Three-Cheese White Lasagna",
     category: "Dinner",
     tag: "Urology Foundation",
-    tagColor: "#7c3aed",
+    tagColor: "#7AAFD4",
     source: "Urology Care Foundation Cookbook",
     sourceUrl: "https://www.urologyhealth.org",
     totalOxalate: 16,
@@ -3307,7 +3408,7 @@ const ALCHEMY_RECIPES = [
     title: "Persian Herb Chicken (Joojeh Style)",
     category: "Dinner",
     tag: "Low Oxalate Living",
-    tagColor: "#2C5282",
+    tagColor: "#3A7090",
     source: "Low Oxalate Living Community",
     sourceUrl: "https://loxalate.me",
     totalOxalate: 7,
@@ -3339,7 +3440,7 @@ const ALCHEMY_RECIPES = [
     title: "Jerk Chicken & Plantain Rice Bowl",
     category: "Dinner",
     tag: "Low Oxalate Living",
-    tagColor: "#2C5282",
+    tagColor: "#3A7090",
     source: "Low Oxalate Living Community",
     sourceUrl: "https://loxalate.me",
     totalOxalate: 11,
@@ -3509,9 +3610,9 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
 
   function builderOxColor(mg) {
     if (mg <= 8)  return "#7AAFD4";
-    if (mg <= 15) return "#a3c4e8";
-    if (mg <= 25) return "#f59e0b";
-    return "#ef4444";
+    if (mg <= 15) return "#7AAFD4";
+    if (mg <= 25) return "#F5C518";
+    return "#E05540";
   }
 
   const rlSave = { ts: [] };
@@ -3539,7 +3640,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
       servings: builderServings,
       totalOxalate: builderTotal,
       tag: "My Recipe",
-      tagColor: "#6E7187",
+      tagColor: "#8AAFC0",
       source: "Your Kitchen",
       prepTime: "Your timing",
       ingredients: validIngs.map(i => ({
@@ -3578,17 +3679,17 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
 
   function oxColor(mg) {
     if (mg <= 8)  return "#7AAFD4";
-    if (mg <= 15) return "#a3c4e8";
-    if (mg <= 25) return "#f59e0b";
-    return "#ef4444";
+    if (mg <= 15) return "#7AAFD4";
+    if (mg <= 25) return "#F5C518";
+    return "#E05540";
   }
 
   return (
-    <div style={{ background: "#F7F9FC", minHeight: "100vh" }}>
+    <div style={{ background: "#FDE8E0", minHeight: "100vh" }}>
 
       {/* ── Hero ── */}
       <div style={{
-        background: "#1E3A5F",
+        background: "#3A7090",
         padding: "28px 20px 32px", position: "relative", overflow: "hidden"
       }}>
         <div style={{ position: "absolute", top: -40, right: -20, width: 160, height: 160, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.08)" }} />
@@ -3625,12 +3726,12 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
       <div style={{ margin: "0 16px", marginTop: -16, position: "relative", zIndex: 10 }}>
         <div style={{
           background: "#FFFFFF", borderRadius: 16, padding: "12px 14px",
-          border: "1px solid #6E7187", boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
+          border: "1px solid #8AAFC0", boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
         }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "#7AAFD4", marginBottom: 4 }}>
             🔬 Evidence-Based Approach
           </div>
-          <div style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6 }}>
+          <div style={{ fontSize: 14, color: "#8AAFC0", lineHeight: 1.6 }}>
             80% of kidney stones are calcium-oxalate. The Borghi et al. clinical trial found that pairing <strong>calcium with meals</strong> — not a strict low-oxalate diet — reduced recurrence by 49%. Every recipe here applies this principle.
           </div>
         </div>
@@ -3642,9 +3743,9 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
           {ALCHEMY_CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setSelectedCategory(cat)} style={{
               padding: "7px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-              border: `1.5px solid ${selectedCategory === cat ? "#7AAFD4" : "#6E7187"}`,
+              border: `1.5px solid ${selectedCategory === cat ? "#7AAFD4" : "#8AAFC0"}`,
               background: selectedCategory === cat ? "#7AAFD4" : "#FFFFFF",
-              color: selectedCategory === cat ? "#FFFFFF" : "#6E7187",
+              color: selectedCategory === cat ? "#FFFFFF" : "#8AAFC0",
               cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s"
             }}>{cat}</button>
           ))}
@@ -3652,7 +3753,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
       </div>
 
       {/* ── Recipe count ── */}
-      <div style={{ padding: "10px 18px 4px", fontSize: 14, color: "#6E7187", fontWeight: 600 }}>
+      <div style={{ padding: "10px 18px 4px", fontSize: 14, color: "#8AAFC0", fontWeight: 600 }}>
         {filtered.length} recipe{filtered.length !== 1 ? "s" : ""} · tap to open
       </div>
 
@@ -3666,7 +3767,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
               onClick={() => setSelectedRecipe(recipe)}
               style={{
                 background: "#FFFFFF", borderRadius: 18,
-                border: "1px solid #6E7187",
+                border: "1px solid #8AAFC0",
                 overflow: "hidden", cursor: "pointer",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                 transition: "transform 0.15s, box-shadow 0.15s"
@@ -3689,7 +3790,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                         border: `1px solid ${recipe.tagColor}44`, textTransform: "uppercase", letterSpacing: "0.06em"
                       }}>{recipe.tag}</span>
                     </div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: "#2C5282", lineHeight: 1.2 }}>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: "#3A7090", lineHeight: 1.2 }}>
                       {recipe.title}
                     </div>
                   </div>
@@ -3707,7 +3808,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                     { icon: "👤", val: `${recipe.servings} serving${recipe.servings > 1 ? "s" : ""}` },
                     { icon: "📚", val: recipe.category },
                   ].map(m => (
-                    <span key={m.val} style={{ fontSize: 14, color: "#6E7187", display: "flex", alignItems: "center", gap: 3 }}>
+                    <span key={m.val} style={{ fontSize: 14, color: "#8AAFC0", display: "flex", alignItems: "center", gap: 3 }}>
                       {m.icon} {m.val}
                     </span>
                   ))}
@@ -3726,7 +3827,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                   style={{
                     flex: 1, padding: "10px", border: "none", background: "none",
                     fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    color: isSaved ? "#7AAFD4" : "#6E7187",
+                    color: isSaved ? "#7AAFD4" : "#8AAFC0",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 5
                   }}
                 >
@@ -3739,7 +3840,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                     flex: 1, padding: "10px", border: "none",
                     background: loggedRecipes[recipe.id] ? "#7AAFD4" : "none",
                     fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    color: loggedRecipes[recipe.id] ? "#2C5282" : "#7AAFD4",
+                    color: loggedRecipes[recipe.id] ? "#3A7090" : "#7AAFD4",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
                     transition: "background 0.2s"
                   }}
@@ -3767,7 +3868,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
 
         {/* Section header — sticky */}
         <div style={{
-          background: "#2C5282",
+          background: "#3A7090",
           borderRadius: 18, padding: "18px 18px 14px",
           marginBottom: 12, position: "sticky", top: 70, zIndex: 50, overflow: "hidden"
         }}>
@@ -3794,201 +3895,189 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
           </button>
         </div>
 
-        {/* ── Recipe Builder Form ── */}
+        {/* ── Recipe Template Builder ── */}
         {showBuilder && (
-          <div style={{
-            background: "#FFFFFF", borderRadius: 18, border: "1px solid #6E7187",
-            padding: "18px", marginBottom: 16,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.08)"
-          }}>
+          <div style={{ background: "#FFFFFF", borderRadius: 18, border: "1px solid #D4E7F2", marginBottom: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(44,82,130,0.08)" }}>
 
-            {/* Live oxalate counter */}
-            <div style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              background: "#7AAFD4", borderRadius: 14, padding: "10px 14px", marginBottom: 16
-            }}>
-              <span style={{ fontSize: 13, color: "#2C5282", fontWeight: 700 }}>Live Oxalate Total</span>
-              <span style={{ fontSize: 24, fontWeight: 900, color: builderOxColor(builderTotal), lineHeight: 1 }}>
-                {builderTotal} <span style={{ fontSize: 11 }}>mg</span>
-              </span>
-            </div>
-
-            {/* Recipe Name */}
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>Recipe Name *</div>
-              <input
-                value={builderName}
-                onChange={e => { setBuilderName(e.target.value); setBuilderError(""); }}
-                placeholder="e.g. My Garlic Butter Salmon..."
-                maxLength={80}
-                style={{
-                  width: "100%", padding: "10px 12px", fontSize: 14, fontWeight: 600,
-                  border: "1.5px solid #6E7187", borderRadius: 12, outline: "none",
-                  fontFamily: "inherit", color: "#2C5282", background: "#fafaf5",
-                  boxSizing: "border-box"
-                }}
-                onFocus={e => e.currentTarget.style.borderColor = "#7AAFD4"}
-                onBlur={e => e.currentTarget.style.borderColor = "#6E7187"}
-              />
-            </div>
-
-            {/* Category + Servings row */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            {/* Template header — looks like a recipe card */}
+            <div style={{ background: "#FDE8E0", borderBottom: "1px solid #D4E7F2", padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>Category</div>
-                <select
-                  value={builderCategory}
-                  onChange={e => setBuilderCategory(e.target.value)}
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>New Recipe</div>
+                {/* Recipe name inline — feels like filling in a title */}
+                <input
+                  value={builderName}
+                  onChange={e => { setBuilderName(e.target.value); setBuilderError(""); }}
+                  placeholder="Untitled Recipe..."
+                  maxLength={80}
                   style={{
-                    width: "100%", padding: "9px 10px", fontSize: 13,
-                    border: "1.5px solid #6E7187", borderRadius: 12, outline: "none",
-                    fontFamily: "inherit", background: "#fafaf5", color: "#2C5282",
-                    boxSizing: "border-box"
+                    fontSize: 20, fontWeight: 900, color: "#3A7090",
+                    border: "none", borderBottom: builderName ? "2px solid #7AAFD4" : "2px dashed #D4E7F2",
+                    outline: "none", background: "transparent", fontFamily: "inherit",
+                    width: "100%", padding: "2px 0"
                   }}
-                >
-                  {["Breakfast","Lunch","Dinner","Side","Snack"].map(c => <option key={c}>{c}</option>)}
-                </select>
+                />
               </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>Servings</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => setBuilderServings(s => Math.max(1, s-1))} style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #6E7187", background: "#fafaf5", fontSize: 16, cursor: "pointer", fontWeight: 700, color: "#7AAFD4" }}>−</button>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: "#2C5282", minWidth: 20, textAlign: "center" }}>{builderServings}</span>
-                  <button onClick={() => setBuilderServings(s => Math.min(12, s+1))} style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #6E7187", background: "#fafaf5", fontSize: 16, cursor: "pointer", fontWeight: 700, color: "#7AAFD4" }}>+</button>
+              {/* Live oxalate badge */}
+              <div style={{ textAlign: "center", flexShrink: 0, marginLeft: 12, background: builderOxColor(builderTotal) + "18", borderRadius: 12, padding: "8px 12px", border: `1.5px solid ${builderOxColor(builderTotal)}44` }}>
+                <div style={{ fontSize: 26, fontWeight: 900, color: builderOxColor(builderTotal), lineHeight: 1 }}>{builderTotal}</div>
+                <div style={{ fontSize: 10, color: builderOxColor(builderTotal), fontWeight: 700 }}>mg total</div>
+              </div>
+            </div>
+
+            <div style={{ padding: "16px 18px" }}>
+
+              {/* Meal type + servings — pill selectors */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>This is a</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                  {["Breakfast","Lunch","Dinner","Side","Snack"].map(cat => (
+                    <button key={cat} onClick={() => setBuilderCategory(cat)} style={{
+                      padding: "7px 16px", borderRadius: 999, fontSize: 13, fontWeight: 700,
+                      border: `2px solid ${builderCategory === cat ? "#3A7090" : "#D4E7F2"}`,
+                      background: builderCategory === cat ? "#3A7090" : "#FFFFFF",
+                      color: builderCategory === cat ? "#FFFFFF" : "#8AAFC0",
+                      cursor: "pointer", transition: "all 0.15s"
+                    }}>{cat}</button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 13, color: "#8AAFC0", fontWeight: 600 }}>Serves</span>
+                  <button onClick={() => setBuilderServings(s => Math.max(1,s-1))} style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #D4E7F2", background: "#FDE8E0", fontSize: 16, cursor: "pointer", fontWeight: 700, color: "#3A7090", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                  <span style={{ fontSize: 18, fontWeight: 900, color: "#3A7090", minWidth: 22, textAlign: "center" }}>{builderServings}</span>
+                  <button onClick={() => setBuilderServings(s => Math.min(12,s+1))} style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #D4E7F2", background: "#FDE8E0", fontSize: 16, cursor: "pointer", fontWeight: 700, color: "#3A7090", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                 </div>
               </div>
-            </div>
 
-            {/* Ingredients */}
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
-                Ingredients * <span style={{ fontWeight: 400, textTransform: "none", fontSize: 9 }}>— enter oxalate mg or 0 if unsure</span>
+              {/* Cooking method — tap to select chips */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Cooked by</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[
+                    { label: "🔥 Grilled",    value: "Grilled" },
+                    { label: "🍳 Pan-seared",  value: "Pan-seared" },
+                    { label: "♨️ Steamed",     value: "Steamed" },
+                    { label: "🫕 Simmered",    value: "Simmered" },
+                    { label: "🌡 Roasted",     value: "Roasted" },
+                    { label: "🥗 Raw",         value: "Raw" },
+                    { label: "🍲 Slow cooked", value: "Slow cooked" },
+                    { label: "🥘 Stir-fried",  value: "Stir-fried" },
+                    { label: "🫙 Baked",       value: "Baked" },
+                    { label: "💧 Boiled",      value: "Boiled" },
+                  ].map(m => {
+                    const isSelected = builderSteps[0] === m.value;
+                    return (
+                      <button key={m.value}
+                        onClick={() => setBuilderSteps([m.value, ...builderSteps.slice(1)])}
+                        style={{
+                          padding: "7px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600,
+                          border: `2px solid ${isSelected ? "#3A7090" : "#D4E7F2"}`,
+                          background: isSelected ? "#FDE8E0" : "#FFFFFF",
+                          color: isSelected ? "#3A7090" : "#8AAFC0",
+                          cursor: "pointer", transition: "all 0.15s"
+                        }}
+                      >{m.label}</button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {builderIngredients.map((ing, i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 80px 52px 28px", gap: 5, marginBottom: 7, alignItems: "center" }}>
-                  {/* Name with autocomplete */}
-                  <div style={{ position: "relative" }}>
+              {/* Ingredients — fill-in-the-blank rows */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+                  Ingredients
+                  <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", color: "#C8BEBB", marginLeft: 6 }}>— enter mg or 0 if unsure</span>
+                </div>
+
+                {builderIngredients.map((ing, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, padding: "10px 12px", background: "#FDE8E0", borderRadius: 12, border: "1px solid #D4E7F2" }}>
+                    {/* Number */}
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#3A7090", color: "#FFFFFF", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i+1}</div>
+                    {/* Ingredient name */}
                     <input
                       value={ing.name}
                       onChange={e => updateIng(i, "name", e.target.value)}
-                      placeholder="Ingredient"
+                      placeholder="Ingredient name..."
                       list={"ing-suggestions-" + i}
-                      style={{
-                        width: "100%", padding: "8px 10px", fontSize: 12,
-                        border: "1px solid #B8D9C8", borderRadius: 10, outline: "none",
-                        fontFamily: "inherit", background: "#fafaf5", boxSizing: "border-box"
-                      }}
+                      style={{ flex: 2, fontSize: 14, fontWeight: 600, border: "none", borderBottom: "1.5px dashed #D4E7F2", outline: "none", background: "transparent", fontFamily: "inherit", color: "#3A7090", padding: "2px 4px" }}
+                      onFocus={e => e.target.style.borderBottomColor = "#7AAFD4"}
+                      onBlur={e => e.target.style.borderBottomColor = "#D4E7F2"}
                     />
                     <datalist id={"ing-suggestions-" + i}>
                       {INGREDIENT_SUGGESTIONS.map(s => <option key={s} value={s} />)}
                     </datalist>
-                  </div>
-                  <input
-                    value={ing.amount}
-                    onChange={e => updateIng(i, "amount", e.target.value)}
-                    placeholder="e.g. 1 cup"
-                    style={{ padding: "8px 8px", fontSize: 11, border: "1px solid #B8D9C8", borderRadius: 10, outline: "none", fontFamily: "inherit", background: "#fafaf5", boxSizing: "border-box" }}
-                  />
-                  <div style={{ position: "relative" }}>
+                    {/* Amount */}
                     <input
-                      value={ing.oxalate}
-                      onChange={e => updateIng(i, "oxalate", e.target.value)}
-                      placeholder="mg"
-                      type="number" min={0} max={999}
-                      style={{ width: "100%", padding: "8px 6px", fontSize: 12, fontWeight: 700, border: "1px solid #B8D9C8", borderRadius: 10, outline: "none", fontFamily: "inherit", background: "#fafaf5", textAlign: "center", boxSizing: "border-box" }}
+                      value={ing.amount}
+                      onChange={e => updateIng(i, "amount", e.target.value)}
+                      placeholder="1 cup"
+                      style={{ width: 64, fontSize: 13, border: "none", borderBottom: "1.5px dashed #D4E7F2", outline: "none", background: "transparent", fontFamily: "inherit", color: "#8AAFC0", textAlign: "center", padding: "2px 4px" }}
+                      onFocus={e => e.target.style.borderBottomColor = "#7AAFD4"}
+                      onBlur={e => e.target.style.borderBottomColor = "#D4E7F2"}
                     />
+                    {/* mg */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+                      <input
+                        value={ing.oxalate}
+                        onChange={e => updateIng(i, "oxalate", e.target.value)}
+                        placeholder="0"
+                        type="number" min={0} max={999}
+                        style={{ width: 44, fontSize: 14, fontWeight: 800, border: "none", borderBottom: `1.5px dashed ${ing.oxalate ? builderOxColor(parseInt(ing.oxalate)||0) : "#D4E7F2"}`, outline: "none", background: "transparent", fontFamily: "inherit", color: ing.oxalate ? builderOxColor(parseInt(ing.oxalate)||0) : "#8AAFC0", textAlign: "center", padding: "2px 2px" }}
+                        onFocus={e => e.target.style.borderBottomColor = "#7AAFD4"}
+                        onBlur={e => e.target.style.borderBottomColor = ing.oxalate ? builderOxColor(parseInt(ing.oxalate)||0) : "#D4E7F2"}
+                      />
+                      <span style={{ fontSize: 11, color: "#C8BEBB", fontWeight: 600 }}>mg</span>
+                    </div>
+                    {/* Remove */}
+                    {builderIngredients.length > 1 && (
+                      <button onClick={() => removeIngRow(i)} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "#FDE8E0", color: "#E05540", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>×</button>
+                    )}
                   </div>
-                  {builderIngredients.length > 1 ? (
-                    <button onClick={() => removeIngRow(i)} style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "#fef2f2", color: "#dc2626", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>×</button>
-                  ) : <div />}
-                </div>
-              ))}
+                ))}
 
-              <button onClick={addIngRow} style={{
-                width: "100%", padding: "8px", borderRadius: 12,
-                border: "1.5px dashed #7AAFD4", background: "transparent",
-                color: "#7AAFD4", fontSize: 12, fontWeight: 700, cursor: "pointer",
-                marginTop: 2
-              }}>+ Add Ingredient</button>
-            </div>
-
-            {/* Steps */}
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Instructions *</div>
-              {builderSteps.map((step, i) => (
-                <div key={i} style={{ display: "flex", gap: 7, alignItems: "flex-start", marginBottom: 7 }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: "50%", background: "#7AAFD4",
-                    color: "#FFFFFF", fontSize: 11, fontWeight: 800, flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center", marginTop: 9
-                  }}>{i + 1}</div>
-                  <textarea
-                    value={step}
-                    onChange={e => updateStep(i, e.target.value)}
-                    placeholder={`Step ${i+1}...`}
-                    rows={2} maxLength={300}
-                    style={{
-                      flex: 1, padding: "8px 10px", fontSize: 12,
-                      border: "1px solid #B8D9C8", borderRadius: 10, outline: "none",
-                      fontFamily: "inherit", resize: "vertical", background: "#fafaf5",
-                      lineHeight: 1.5
-                    }}
-                  />
-                  {builderSteps.length > 1 && (
-                    <button onClick={() => removeStep(i)} style={{ marginTop: 9, width: 26, height: 26, borderRadius: "50%", border: "none", background: "#fef2f2", color: "#dc2626", fontSize: 14, cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>×</button>
-                  )}
-                </div>
-              ))}
-              <button onClick={addStep} style={{
-                width: "100%", padding: "8px", borderRadius: 12,
-                border: "1.5px dashed #7AAFD4", background: "transparent",
-                color: "#7AAFD4", fontSize: 12, fontWeight: 700, cursor: "pointer"
-              }}>+ Add Step</button>
-            </div>
-
-            {/* Personal tip */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>Your Tip (optional)</div>
-              <textarea
-                value={builderTip}
-                onChange={e => setBuilderTip(e.target.value)}
-                placeholder="Any personal notes, substitutions, or tips..."
-                rows={2} maxLength={300}
-                style={{
-                  width: "100%", padding: "9px 12px", fontSize: 12,
-                  border: "1px solid #B8D9C8", borderRadius: 12, outline: "none",
-                  fontFamily: "inherit", resize: "vertical", background: "#fafaf5",
-                  boxSizing: "border-box", lineHeight: 1.5
-                }}
-              />
-            </div>
-
-            {/* Error */}
-            {builderError && (
-              <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 12, padding: "9px 12px", marginBottom: 12, fontSize: 13, color: "#dc2626", fontWeight: 700 }}>
-                {builderError}
+                <button onClick={addIngRow} style={{
+                  width: "100%", padding: "9px", borderRadius: 12,
+                  border: "2px dashed #D4E7F2", background: "transparent",
+                  color: "#7AAFD4", fontSize: 13, fontWeight: 700, cursor: "pointer"
+                }}>+ Add Ingredient</button>
               </div>
-            )}
 
-            {/* Save button */}
-            <button onClick={saveMyRecipe} style={{
-              width: "100%", padding: "13px",
-              background: builderSaved ? "#7AAFD4" : "#2C5282",
-              color: builderSaved ? "#7AAFD4" : "#FFFFFF",
-              border: builderSaved ? "2px solid #7AAFD4" : "none",
-              borderRadius: 16, fontSize: 16, fontWeight: 800, cursor: "pointer",
-              transition: "all 0.2s", boxShadow: builderSaved ? "none" : "0 4px 14px rgba(32,181,93,0.3)"
-            }}>
-              {builderSaved ? "✓ Recipe Saved!" : `Save Recipe · ${builderTotal}mg oxalate`}
-            </button>
+              {/* Notes / tip */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Notes</div>
+                <textarea
+                  value={builderTip}
+                  onChange={e => setBuilderTip(e.target.value)}
+                  placeholder="Any tips, swaps, or things to remember..."
+                  rows={2} maxLength={300}
+                  style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1.5px solid #D4E7F2", borderRadius: 12, outline: "none", fontFamily: "inherit", resize: "vertical", background: "#FDE8E0", boxSizing: "border-box", lineHeight: 1.6 }}
+                  onFocus={e => e.target.style.borderColor = "#7AAFD4"}
+                  onBlur={e => e.target.style.borderColor = "#D4E7F2"}
+                />
+              </div>
+
+              {builderError && (
+                <div style={{ background: "#FDE8E0", border: "1px solid #E05540", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 14, color: "#E05540", fontWeight: 700 }}>
+                  {builderError}
+                </div>
+              )}
+
+              <button onClick={saveMyRecipe} style={{
+                width: "100%", padding: "14px",
+                background: builderSaved ? "#7AAFD4" : "#3A7090",
+                color: "#FFFFFF", border: "none",
+                borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer",
+                transition: "all 0.2s", boxShadow: builderSaved ? "none" : "0 4px 16px rgba(44,82,130,0.25)"
+              }}>
+                {builderSaved ? "✓ Recipe Saved!" : `Save Recipe · ${builderTotal}mg`}
+              </button>
+            </div>
           </div>
         )}
 
         {/* ── My Recipes list ── */}
         {myRecipes.length > 0 && (
           <div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
               My Recipes ({myRecipes.length})
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -3999,7 +4088,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                     onClick={() => setSelectedMyRecipe(recipe)}
                     style={{
                       background: "#FFFFFF", borderRadius: 16,
-                      border: "1px solid #6E7187",
+                      border: "1px solid #8AAFC0",
                       padding: "18px", cursor: "pointer",
                       boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
                       transition: "transform 0.15s"
@@ -4009,8 +4098,8 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 17, fontWeight: 800, color: "#2C5282", marginBottom: 4 }}>{recipe.title}</div>
-                        <div style={{ display: "flex", gap: 12, fontSize: 14, color: "#6E7187" }}>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: "#3A7090", marginBottom: 4 }}>{recipe.title}</div>
+                        <div style={{ display: "flex", gap: 12, fontSize: 14, color: "#8AAFC0" }}>
                           <span>🍽 {recipe.category}</span>
                           <span>👤 {recipe.servings} serving{recipe.servings > 1 ? "s" : ""}</span>
                           <span>🧪 {recipe.ingredients.length} ingredients</span>
@@ -4030,14 +4119,14 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
       </div>
 
       {/* ── Sources & Disclaimers Footer ── */}
-      <div style={{ margin: "0 16px 24px", background: "#FFFFFF", borderRadius: 18, border: "1px solid #BFDBFE", overflow: "hidden" }}>
+      <div style={{ margin: "0 16px 24px", background: "#FFFFFF", borderRadius: 18, border: "1px solid #D4E7F2", overflow: "hidden" }}>
         {/* Header */}
-        <div style={{ background: "#2C5282", padding: "18px", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ background: "#3A7090", padding: "18px", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 14 }}>📚</span>
           <span style={{ fontSize: 12, fontWeight: 800, color: "#FFFFFF", textTransform: "uppercase", letterSpacing: "0.1em" }}>Clinical Sources</span>
         </div>
         <div style={{ padding: "18px" }}>
-          <p style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6, marginBottom: 12 }}>
+          <p style={{ fontSize: 14, color: "#8AAFC0", lineHeight: 1.6, marginBottom: 12 }}>
             All recipes and dietary guidance are grounded in peer-reviewed research and recommendations from registered dietitian nutritionists specializing in kidney stone prevention.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4051,29 +4140,29 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
               { name: "NKF of Hawaii", desc: "How Oxalates Affect Kidney Health", url: "https://kidneyhi.org/blog/how-oxalates-affect-kidney-health-what-you-need-to-know-to-prevent-kidney-stones/" },
             ].map(source => (
               <a key={source.name} href={source.url} target="_blank" rel="noreferrer"
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, padding: "9px 12px", background: "#ffffff", borderRadius: 12, border: "1px solid #BFDBFE", textDecoration: "none", transition: "border-color 0.15s" }}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, padding: "9px 12px", background: "#ffffff", borderRadius: 12, border: "1px solid #D4E7F2", textDecoration: "none", transition: "border-color 0.15s" }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = "#7AAFD4"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "#BFDBFE"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "#D4E7F2"}
               >
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#2C5282", marginBottom: 2 }}>{source.name}</div>
-                  <div style={{ fontSize: 14, color: "#6E7187" }}>{source.desc}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#3A7090", marginBottom: 2 }}>{source.name}</div>
+                  <div style={{ fontSize: 14, color: "#8AAFC0" }}>{source.desc}</div>
                 </div>
                 <span style={{ fontSize: 11, color: "#7AAFD4", flexShrink: 0, marginTop: 2 }}>↗</span>
               </a>
             ))}
           </div>
           {/* Disclaimer */}
-          <div style={{ marginTop: 14, padding: "10px 12px", background: "#FFF9E6", border: "1px solid #FCD34D", borderRadius: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#92400E", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>⚠️ Medical Disclaimer</div>
-            <p style={{ fontSize: 11, color: "#78350F", lineHeight: 1.6, margin: 0 }}>
+          <div style={{ marginTop: 14, padding: "10px 12px", background: "#FDE8E0", border: "1px solid #F5C518", borderRadius: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#3A7090", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>⚠️ Medical Disclaimer</div>
+            <p style={{ fontSize: 11, color: "#3A7090", lineHeight: 1.6, margin: 0 }}>
               Loxalate is a dietary reference tool, not a substitute for medical advice. Oxalate targets vary by individual — always consult your nephrologist or registered dietitian before making significant dietary changes. Information is provided for general educational purposes only.
             </p>
           </div>
           {/* Copyright */}
           <div style={{ marginTop: 12, textAlign: "center" }}>
             <img src={LOGO_B64} alt="Loxalate" style={{ height: 22, width: "auto", opacity: 0.5, marginBottom: 4 }} />
-            <div style={{ fontSize: 10, color: "#B0B3C4" }}>© {new Date().getFullYear()} Loxalate · loxalate.me · All rights reserved</div>
+            <div style={{ fontSize: 10, color: "#D4E7F2" }}>© {new Date().getFullYear()} Loxalate · loxalate.me · All rights reserved</div>
           </div>
         </div>
       </div>
@@ -4114,7 +4203,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                 border: `1px solid ${selectedRecipe.tagColor}44`, textTransform: "uppercase",
                 letterSpacing: "0.06em", marginBottom: 8
               }}>{selectedRecipe.tag}</span>
-              <div style={{ fontSize: 22, fontWeight: 900, color: "#2C5282", lineHeight: 1.2, marginBottom: 6 }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#3A7090", lineHeight: 1.2, marginBottom: 6 }}>
                 {selectedRecipe.title}
               </div>
 
@@ -4122,13 +4211,13 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
               <div style={{ display: "flex", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
                 {[
                   { label: "Total Oxalate", val: `${selectedRecipe.totalOxalate}mg`, color: oxColor(selectedRecipe.totalOxalate) },
-                  { label: "Prep Time", val: selectedRecipe.prepTime, color: "#6E7187" },
-                  { label: "Servings", val: selectedRecipe.servings, color: "#6E7187" },
-                  { label: "Category", val: selectedRecipe.category, color: "#6E7187" },
+                  { label: "Prep Time", val: selectedRecipe.prepTime, color: "#8AAFC0" },
+                  { label: "Servings", val: selectedRecipe.servings, color: "#8AAFC0" },
+                  { label: "Category", val: selectedRecipe.category, color: "#8AAFC0" },
                 ].map(s => (
                   <div key={s.label} style={{ textAlign: "center" }}>
                     <div style={{ fontSize: 17, fontWeight: 800, color: s.color }}>{s.val}</div>
-                    <div style={{ fontSize: 10, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</div>
+                    <div style={{ fontSize: 10, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</div>
                   </div>
                 ))}
               </div>
@@ -4141,13 +4230,13 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                 <div style={{ fontSize: 11, fontWeight: 800, color: "#7AAFD4", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>
                   🔬 Why This Works
                 </div>
-                <div style={{ fontSize: 13, color: "#2C5282", lineHeight: 1.6 }}>
+                <div style={{ fontSize: 13, color: "#3A7090", lineHeight: 1.6 }}>
                   {selectedRecipe.whyItWorks}
                 </div>
               </div>
 
               {/* Source */}
-              <div style={{ fontSize: 14, color: "#6E7187", marginBottom: 16 }}>
+              <div style={{ fontSize: 14, color: "#8AAFC0", marginBottom: 16 }}>
                 📖 Source:{" "}
                 <a href={selectedRecipe.sourceUrl} target="_blank" rel="noreferrer"
                   style={{ color: "#7AAFD4", fontWeight: 700, textDecoration: "none" }}
@@ -4158,7 +4247,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
               </div>
 
               {/* Ingredients */}
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
                 Ingredients
               </div>
               {selectedRecipe.ingredients.map((ing, i) => {
@@ -4168,10 +4257,10 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                 return (
                   <div key={i} style={{ marginBottom: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, color: "#2C5282", fontWeight: 500 }}>{ing.name}</span>
+                      <span style={{ fontSize: 13, color: "#3A7090", fontWeight: 500 }}>{ing.name}</span>
                       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <span style={{ fontSize: 14, color: "#6E7187" }}>{ing.amount}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#6E7187" : c, minWidth: 36, textAlign: "right" }}>
+                        <span style={{ fontSize: 14, color: "#8AAFC0" }}>{ing.amount}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#8AAFC0" : c, minWidth: 36, textAlign: "right" }}>
                           {ing.oxalate === 0 ? "0mg" : `${ing.oxalate}mg`}
                         </span>
                       </div>
@@ -4184,7 +4273,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
               })}
 
               {/* Steps */}
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", margin: "18px 0 10px" }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", margin: "18px 0 10px" }}>
                 Instructions
               </div>
               {selectedRecipe.steps.map((step, i) => (
@@ -4194,19 +4283,19 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                     color: "#FFFFFF", fontSize: 12, fontWeight: 800,
                     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1
                   }}>{i + 1}</div>
-                  <div style={{ fontSize: 15, color: "#374151", lineHeight: 1.6, flex: 1 }}>{step}</div>
+                  <div style={{ fontSize: 15, color: "#8AAFC0", lineHeight: 1.6, flex: 1 }}>{step}</div>
                 </div>
               ))}
 
               {/* Tips */}
               <div style={{
-                background: "#fffbeb", borderRadius: 14, padding: "12px 14px",
-                border: "1px solid #fcd34d", marginTop: 8
+                background: "#FDE8E0", borderRadius: 14, padding: "12px 14px",
+                border: "1px solid #F5C518", marginTop: 8
               }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#3A7090", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>
                   💡 Dietitian Tip
                 </div>
-                <div style={{ fontSize: 13, color: "#78350f", lineHeight: 1.6 }}>
+                <div style={{ fontSize: 13, color: "#3A7090", lineHeight: 1.6 }}>
                   {selectedRecipe.tips}
                 </div>
               </div>
@@ -4217,9 +4306,9 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                   onClick={() => addRecipeToLog(selectedRecipe)}
                   style={{
                     flex: 1, padding: "18px",
-                    background: loggedRecipes[selectedRecipe.id] ? "#7AAFD4" : "#2C5282",
-                    color: loggedRecipes[selectedRecipe.id] ? "#2C5282" : "#FFFFFF",
-                    border: "2px solid #2C5282", borderRadius: 16,
+                    background: loggedRecipes[selectedRecipe.id] ? "#7AAFD4" : "#3A7090",
+                    color: loggedRecipes[selectedRecipe.id] ? "#3A7090" : "#FFFFFF",
+                    border: "2px solid #3A7090", borderRadius: 16,
                     fontSize: 16, fontWeight: 800, cursor: "pointer",
                     transition: "all 0.2s"
                   }}
@@ -4231,7 +4320,7 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                   style={{
                     flex: 1, padding: "18px",
                     background: savedRecipes[selectedRecipe.id] ? "#7AAFD4" : "none",
-                    color: savedRecipes[selectedRecipe.id] ? "#2C5282" : "#6E7187",
+                    color: savedRecipes[selectedRecipe.id] ? "#3A7090" : "#8AAFC0",
                     border: "2px solid #7AAFD4", borderRadius: 16,
                     fontSize: 16, fontWeight: 800, cursor: "pointer",
                     transition: "all 0.2s"
@@ -4263,8 +4352,8 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
             <div style={{ overflowY: "auto", padding: "12px 22px 40px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: "#f3f4f6", color: "#6E7187", display: "inline-block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>My Recipe</div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: "#2C5282", lineHeight: 1.2 }}>{selectedMyRecipe.title}</div>
+                  <div style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: "#FDE8E0", color: "#8AAFC0", display: "inline-block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>My Recipe</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "#3A7090", lineHeight: 1.2 }}>{selectedMyRecipe.title}</div>
                 </div>
                 <div style={{ textAlign: "center", marginLeft: 12, flexShrink: 0 }}>
                   <div style={{ fontSize: 28, fontWeight: 900, color: builderOxColor(selectedMyRecipe.totalOxalate), lineHeight: 1 }}>{selectedMyRecipe.totalOxalate}</div>
@@ -4279,13 +4368,13 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                   { label: "Ingredients", val: selectedMyRecipe.ingredients.length },
                 ].map(s => (
                   <div key={s.label} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: "#2C5282" }}>{s.val}</div>
-                    <div style={{ fontSize: 10, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: "#3A7090" }}>{s.val}</div>
+                    <div style={{ fontSize: 10, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</div>
                   </div>
                 ))}
               </div>
 
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Ingredients</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Ingredients</div>
               {selectedMyRecipe.ingredients.map((ing, i) => {
                 const maxOx = Math.max(...selectedMyRecipe.ingredients.map(x => x.oxalate), 1);
                 const pct = ing.oxalate === 0 ? 0 : Math.max((ing.oxalate / maxOx) * 100, 5);
@@ -4293,10 +4382,10 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                 return (
                   <div key={i} style={{ marginBottom: 10 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, color: "#2C5282", fontWeight: 500 }}>{ing.name}</span>
+                      <span style={{ fontSize: 13, color: "#3A7090", fontWeight: 500 }}>{ing.name}</span>
                       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <span style={{ fontSize: 14, color: "#6E7187" }}>{ing.amount}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#6E7187" : c, minWidth: 36, textAlign: "right" }}>{ing.oxalate === 0 ? "0mg" : `${ing.oxalate}mg`}</span>
+                        <span style={{ fontSize: 14, color: "#8AAFC0" }}>{ing.amount}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#8AAFC0" : c, minWidth: 36, textAlign: "right" }}>{ing.oxalate === 0 ? "0mg" : `${ing.oxalate}mg`}</span>
                       </div>
                     </div>
                     <div style={{ height: 3, background: "#7AAFD4", borderRadius: 2 }}>
@@ -4306,24 +4395,24 @@ function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
                 );
               })}
 
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", margin: "16px 0 10px" }}>Instructions</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", margin: "16px 0 10px" }}>Instructions</div>
               {selectedMyRecipe.steps.map((step, i) => (
                 <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#7AAFD4", color: "#FFFFFF", fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                  <div style={{ fontSize: 15, color: "#374151", lineHeight: 1.6, flex: 1 }}>{step}</div>
+                  <div style={{ fontSize: 15, color: "#8AAFC0", lineHeight: 1.6, flex: 1 }}>{step}</div>
                 </div>
               ))}
 
               {selectedMyRecipe.tips && (
-                <div style={{ background: "#fffbeb", borderRadius: 14, padding: "12px 14px", border: "1px solid #fcd34d", marginTop: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>💡 My Note</div>
-                  <div style={{ fontSize: 13, color: "#78350f", lineHeight: 1.6 }}>{selectedMyRecipe.tips}</div>
+                <div style={{ background: "#FDE8E0", borderRadius: 14, padding: "12px 14px", border: "1px solid #F5C518", marginTop: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#3A7090", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>💡 My Note</div>
+                  <div style={{ fontSize: 13, color: "#3A7090", lineHeight: 1.6 }}>{selectedMyRecipe.tips}</div>
                 </div>
               )}
 
               <button
                 onClick={() => deleteMyRecipe(selectedMyRecipe.id)}
-                style={{ width: "100%", marginTop: 18, padding: "13px", background: "#fef2f2", color: "#dc2626", border: "2px solid #fca5a5", borderRadius: 16, fontSize: 17, fontWeight: 800, cursor: "pointer" }}
+                style={{ width: "100%", marginTop: 18, padding: "13px", background: "#FDE8E0", color: "#E05540", border: "2px solid #E05540", borderRadius: 16, fontSize: 17, fontWeight: 800, cursor: "pointer" }}
               >
                 🗑 Delete This Recipe
               </button>
@@ -4379,13 +4468,13 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
   const completion = Math.round((completionFields.filter(Boolean).length / completionFields.length) * 100);
 
   const totalToday  = trackedDishes.reduce((s, d) => s + d.total, 0);
-  const logColor    = totalToday < 50 ? "#7AAFD4" : totalToday < 100 ? "#fbbf24" : "#f87171";
+  const logColor    = totalToday < 50 ? "#7AAFD4" : totalToday < 100 ? "#F5C518" : "#E05540";
   const logStatus   = totalToday < 50 ? "Excellent" : totalToday < 100 ? "On Track" : "Over Target";
   const logPct      = Math.min((totalToday / 100) * 100, 100);
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-      <div style={{ textAlign: "center", color: "#6E7187" }}>
+      <div style={{ textAlign: "center", color: "#8AAFC0" }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🌿</div>
         <div style={{ fontSize: 14 }}>Loading...</div>
       </div>
@@ -4393,10 +4482,10 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
   );
 
   return (
-    <div style={{ background: "#F7F9FC", minHeight: "100vh", paddingBottom: 80 }}>
+    <div style={{ background: "#FDE8E0", minHeight: "100vh", paddingBottom: 80 }}>
 
       {/* ── HERO ── */}
-      <div style={{ background: "#2C5282", padding: "28px 20px 28px", position: "relative", overflow: "hidden" }}>
+      <div style={{ background: "#3A7090", padding: "28px 20px 28px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -40, right: -40, width: 200, height: 200, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.06)" }} />
         <div style={{ position: "absolute", bottom: -20, left: -20, width: 120, height: 120, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.05)" }} />
 
@@ -4458,12 +4547,12 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
       <div style={{ padding: "16px 16px 0" }}>
 
         {/* Today's Log card */}
-        <div style={{ background: "#FFFFFF", border: "1px solid #BFDBFE", borderRadius: 16, padding: "16px", marginBottom: 12, boxShadow: "0 4px 16px rgba(44,82,130,0.08)" }}>
+        <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 16, padding: "16px", marginBottom: 12, boxShadow: "0 4px 16px rgba(44,82,130,0.08)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 800, color: "#2C5282", textTransform: "uppercase", letterSpacing: "0.08em" }}>📋 Today's Log</span>
+            <span style={{ fontSize: 12, fontWeight: 800, color: "#3A7090", textTransform: "uppercase", letterSpacing: "0.08em" }}>📋 Today's Log</span>
             <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
               <span style={{ fontSize: 28, fontWeight: 900, color: logColor, lineHeight: 1 }}>{totalToday}</span>
-              <span style={{ fontSize: 14, color: "#6E7187" }}>mg</span>
+              <span style={{ fontSize: 14, color: "#8AAFC0" }}>mg</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: logColor, marginLeft: 4 }}>{logStatus}</span>
             </div>
           </div>
@@ -4471,33 +4560,33 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
             <div style={{ height: "100%", width: logPct + "%", background: logColor, borderRadius: 999, transition: "width 0.4s ease" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: trackedDishes.length ? 10 : 0 }}>
-            <span style={{ fontSize: 10, color: "#6E7187" }}>0mg</span>
-            <span style={{ fontSize: 10, color: "#6E7187" }}>Target: 50–100mg/day</span>
-            <span style={{ fontSize: 10, color: "#6E7187" }}>100mg</span>
+            <span style={{ fontSize: 10, color: "#8AAFC0" }}>0mg</span>
+            <span style={{ fontSize: 10, color: "#8AAFC0" }}>Target: 50–100mg/day</span>
+            <span style={{ fontSize: 10, color: "#8AAFC0" }}>100mg</span>
           </div>
           {trackedDishes.length === 0 ? (
-            <div style={{ fontSize: 14, color: "#6E7187", textAlign: "center", padding: "8px 0" }}>Nothing logged yet — add dishes from the Map 🗺</div>
+            <div style={{ fontSize: 14, color: "#8AAFC0", textAlign: "center", padding: "8px 0" }}>Nothing logged yet — add dishes from the Map 🗺</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {trackedDishes.map(entry => {
-                const c = entry.total <= 10 ? "#7AAFD4" : entry.total <= 25 ? "#fbbf24" : "#f87171";
+                const c = entry.total <= 10 ? "#7AAFD4" : entry.total <= 25 ? "#F5C518" : "#E05540";
                 return (
                   <div key={entry.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#ffffff", borderRadius: 12, padding: "7px 10px", borderLeft: `3px solid ${c}` }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{entry.dish}</div>
-                      <div style={{ fontSize: 14, color: "#6E7187" }}>{entry.restaurantName} · {entry.time}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#3A7090", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{entry.dish}</div>
+                      <div style={{ fontSize: 14, color: "#8AAFC0" }}>{entry.restaurantName} · {entry.time}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                       <span style={{ fontSize: 17, fontWeight: 800, color: c }}>{entry.total}mg</span>
-                      <button onClick={() => removeFromLog(entry.id)} style={{ background: "none", border: "none", color: "#CBD5E1", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2 }}
-                        onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                        onMouseLeave={e => e.currentTarget.style.color = "#CBD5E1"}
+                      <button onClick={() => removeFromLog(entry.id)} style={{ background: "none", border: "none", color: "#D4E7F2", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2 }}
+                        onMouseEnter={e => e.currentTarget.style.color = "#E05540"}
+                        onMouseLeave={e => e.currentTarget.style.color = "#D4E7F2"}
                       >×</button>
                     </div>
                   </div>
                 );
               })}
-              <button onClick={clearLog} style={{ marginTop: 4, width: "100%", padding: "6px", background: "none", border: "1px solid #fca5a5", borderRadius: 10, color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={clearLog} style={{ marginTop: 4, width: "100%", padding: "6px", background: "none", border: "1px solid #E05540", borderRadius: 10, color: "#E05540", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 Reset Day
               </button>
             </div>
@@ -4508,16 +4597,16 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
 
           {/* Dietary snapshot */}
-          <div style={{ background: "#FFFFFF", border: "1px solid #BFDBFE", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🥗 Diet</div>
+          <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🥗 Diet</div>
             {profile.eating_patterns?.length > 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {profile.eating_patterns.slice(0, 3).map(p => (
-                  <span key={p} style={{ fontSize: 11, color: "#2C5282", background: "#DBEAFE", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>
+                  <span key={p} style={{ fontSize: 11, color: "#3A7090", background: "#D4E7F2", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>
                     {p.replace(/_/g, " ")}
                   </span>
                 ))}
-                {profile.eating_patterns.length > 3 && <span style={{ fontSize: 14, color: "#6E7187" }}>+{profile.eating_patterns.length - 3} more</span>}
+                {profile.eating_patterns.length > 3 && <span style={{ fontSize: 14, color: "#8AAFC0" }}>+{profile.eating_patterns.length - 3} more</span>}
               </div>
             ) : (
               <span onClick={() => setEditOpen(true)} style={{ fontSize: 12, color: "#7AAFD4", cursor: "pointer", fontWeight: 600 }}>Set up →</span>
@@ -4525,14 +4614,14 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
           </div>
 
           {/* Cuisines */}
-          <div style={{ background: "#FFFFFF", border: "1px solid #BFDBFE", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🍜 Cuisines</div>
+          <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🍜 Cuisines</div>
             {profile.cuisines?.length > 0 ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                 {profile.cuisines.slice(0, 4).map(c => (
-                  <span key={c} style={{ fontSize: 11, color: "#2C5282", background: "#DBEAFE", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>{c}</span>
+                  <span key={c} style={{ fontSize: 11, color: "#3A7090", background: "#D4E7F2", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>{c}</span>
                 ))}
-                {profile.cuisines.length > 4 && <span style={{ fontSize: 14, color: "#6E7187" }}>+{profile.cuisines.length - 4}</span>}
+                {profile.cuisines.length > 4 && <span style={{ fontSize: 14, color: "#8AAFC0" }}>+{profile.cuisines.length - 4}</span>}
               </div>
             ) : (
               <span onClick={() => setEditOpen(true)} style={{ fontSize: 12, color: "#7AAFD4", cursor: "pointer", fontWeight: 600 }}>Set up →</span>
@@ -4540,14 +4629,14 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
           </div>
 
           {/* Avoid */}
-          <div style={{ background: "#FFFFFF", border: "1px solid #BFDBFE", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🚫 Avoid</div>
+          <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🚫 Avoid</div>
             {profile.disliked_ingredients?.length > 0 ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                 {profile.disliked_ingredients.slice(0, 4).map(i => (
-                  <span key={i} style={{ fontSize: 11, color: "#dc2626", background: "#fef2f2", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>{i}</span>
+                  <span key={i} style={{ fontSize: 11, color: "#E05540", background: "#FDE8E0", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>{i}</span>
                 ))}
-                {profile.disliked_ingredients.length > 4 && <span style={{ fontSize: 14, color: "#6E7187" }}>+{profile.disliked_ingredients.length - 4}</span>}
+                {profile.disliked_ingredients.length > 4 && <span style={{ fontSize: 14, color: "#8AAFC0" }}>+{profile.disliked_ingredients.length - 4}</span>}
               </div>
             ) : (
               <span onClick={() => setEditOpen(true)} style={{ fontSize: 12, color: "#7AAFD4", cursor: "pointer", fontWeight: 600 }}>Set up →</span>
@@ -4555,16 +4644,16 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
           </div>
 
           {/* Health Apps */}
-          <div style={{ background: "#FFFFFF", border: "1px solid #BFDBFE", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🔗 Health Apps</div>
+          <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🔗 Health Apps</div>
             <div style={{ display: "flex", gap: 8 }}>
               {[{id:"apple",logo:"🍎"},{id:"google",logo:"🟢"},{id:"samsung",logo:"🔵"}].map(app => {
                 const connected = profile.health_connected?.includes(app.id);
                 return (
                   <button key={app.id} onClick={() => { openHealthApp(app.id); if (!connected) set("health_connected", [...(profile.health_connected||[]), app.id]); }}
-                    style={{ flex: 1, padding: "6px 4px", borderRadius: 12, border: `1.5px solid ${connected ? "#7AAFD4" : "#CBD5E1"}`, background: connected ? "#DBEAFE" : "#FFFFFF", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                    style={{ flex: 1, padding: "6px 4px", borderRadius: 12, border: `1.5px solid ${connected ? "#7AAFD4" : "#D4E7F2"}`, background: connected ? "#D4E7F2" : "#FFFFFF", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                     <span style={{ fontSize: 16 }}>{app.logo}</span>
-                    <span style={{ fontSize: 8, fontWeight: 700, color: connected ? "#2C5282" : "#6E7187" }}>{connected ? "✓" : "Link"}</span>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: connected ? "#3A7090" : "#8AAFC0" }}>{connected ? "✓" : "Link"}</span>
                   </button>
                 );
               })}
@@ -4575,11 +4664,11 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
 
         {/* Medical conditions — full width if set */}
         {profile.medical_conditions?.length > 0 && (
-          <div style={{ background: "#FFFFFF", border: "1px solid #BFDBFE", borderRadius: 18, padding: "18px", marginBottom: 12, boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>🏥 Medical Conditions</div>
+          <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 18, padding: "18px", marginBottom: 12, boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>🏥 Medical Conditions</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
               {profile.medical_conditions.map(c => (
-                <span key={c} style={{ fontSize: 12, color: "#2C5282", background: "#DBEAFE", borderRadius: 6, padding: "3px 9px", fontWeight: 600, border: "1px solid #93C5FD" }}>{c}</span>
+                <span key={c} style={{ fontSize: 12, color: "#3A7090", background: "#D4E7F2", borderRadius: 6, padding: "3px 9px", fontWeight: 600, border: "1px solid #D4E7F2" }}>{c}</span>
               ))}
             </div>
           </div>
@@ -4589,9 +4678,9 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
         {completion < 40 && (
           <div style={{ background: "#FFFFFF", border: "2px dashed #7AAFD4", borderRadius: 18, padding: "20px", textAlign: "center", marginBottom: 12 }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🌿</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282", marginBottom: 6 }}>Complete your profile</div>
-            <div style={{ fontSize: 14, color: "#6E7187", marginBottom: 14, lineHeight: 1.5 }}>Add your goals, conditions, and dietary preferences so Loxalate can personalize your experience.</div>
-            <button onClick={() => setEditOpen(true)} style={{ padding: "10px 24px", background: "#2C5282", color: "#FFFFFF", border: "none", borderRadius: 14, fontSize: 17, fontWeight: 800, cursor: "pointer" }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#3A7090", marginBottom: 6 }}>Complete your profile</div>
+            <div style={{ fontSize: 14, color: "#8AAFC0", marginBottom: 14, lineHeight: 1.5 }}>Add your goals, conditions, and dietary preferences so Loxalate can personalize your experience.</div>
+            <button onClick={() => setEditOpen(true)} style={{ padding: "10px 24px", background: "#3A7090", color: "#FFFFFF", border: "none", borderRadius: 14, fontSize: 17, fontWeight: 800, cursor: "pointer" }}>
               Set Up Profile
             </button>
           </div>
@@ -4606,10 +4695,10 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
 
             {/* Handle + header */}
             <div style={{ padding: "14px 20px 0", flexShrink: 0 }}>
-              <div style={{ width: 40, height: 4, background: "#CBD5E1", borderRadius: 2, margin: "0 auto 14px" }} />
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, borderBottom: "1px solid #BFDBFE", paddingBottom: 14 }}>
-                <div style={{ fontSize: 17, fontWeight: 900, color: "#2C5282" }}>Edit Profile</div>
-                <button onClick={() => setEditOpen(false)} style={{ background: "#FFFFFF", border: "1px solid #CBD5E1", borderRadius: 12, width: 30, height: 30, cursor: "pointer", fontSize: 16, color: "#6E7187", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+              <div style={{ width: 40, height: 4, background: "#D4E7F2", borderRadius: 2, margin: "0 auto 14px" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, borderBottom: "1px solid #D4E7F2", paddingBottom: 14 }}>
+                <div style={{ fontSize: 17, fontWeight: 900, color: "#3A7090" }}>Edit Profile</div>
+                <button onClick={() => setEditOpen(false)} style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 12, width: 30, height: 30, cursor: "pointer", fontSize: 16, color: "#8AAFC0", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
               </div>
             </div>
 
@@ -4714,14 +4803,14 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
               </SectionCard>
 
               {saveError && (
-                <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 14, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#dc2626", fontWeight: 600 }}>
+                <div style={{ background: "#FDE8E0", border: "1px solid #E05540", borderRadius: 14, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#E05540", fontWeight: 600 }}>
                   {saveError}
                 </div>
               )}
 
               <button onClick={saveProfile} style={{
                 width: "100%", padding: "15px",
-                background: saved ? "#7AAFD4" : "#2C5282",
+                background: saved ? "#7AAFD4" : "#3A7090",
                 color: "#FFFFFF", border: "none", borderRadius: 18,
                 fontSize: 17, fontWeight: 800, cursor: "pointer",
                 transition: "all 0.2s", marginTop: 8
@@ -4743,9 +4832,227 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
 
 
 // ─── SHARED FOOTER ────────────────────────────────────────────────────────────
+
+// ─── SEARCH DISH PANEL ────────────────────────────────────────────────────────
+function SearchDishPanel({ allDishes, onSelect }) {
+  const [query, setQuery] = useState("");
+  const [activeRange, setActiveRange] = useState("low");
+  const [activeCuisine, setActiveCuisine] = useState("All");
+
+  const RANGES = {
+    low:  { min: 0,  max: 10,  label: "Low",    range: "< 10 mg",  color: "#7AAFD4", bg: "#e8f4fb", textCol: "#2a6a90", border: "#b0d8f0" },
+    med:  { min: 11, max: 25,  label: "Medium",  range: "11–25 mg", color: "#F5C518", bg: "#fdf6dc", textCol: "#7a5500", border: "#f0d868" },
+    high: { min: 26, max: 999, label: "High",    range: "> 25 mg",  color: "#E05540", bg: "#fef0ee", textCol: "#a83020", border: "#f0b4aa" },
+  };
+
+  const CUISINES = ["All", "Asian", "Mediterranean", "American", "Middle Eastern", "Seafood"];
+
+  // Assign a rough cuisine tag to each dish based on restaurant name / dish name keywords
+  function guessCuisine(dish) {
+    const n = (dish.dish + " " + dish.restaurantName).toLowerCase();
+    if (/salmon|fish|seafood|tuna|shrimp|scallop|cod|bass|trout/.test(n)) return "Seafood";
+    if (/kebab|shawarma|falafel|hummus|tahini|baba|pita|gyro|kofta|seekh|persian|annapurna|heidar/.test(n)) return "Middle Eastern";
+    if (/mediterranean|greek|feta|pita|meze|tzatziki|spanakopita/.test(n)) return "Mediterranean";
+    if (/wok|sushi|ramen|thai|pho|dim sum|bok choy|tofu|teriyaki|udon|miso|stir.?fry|asian|chinese|japanese|korean|star leaf|top restaurant|joy/.test(n)) return "Asian";
+    return "American";
+  }
+
+  const inRange = (mg) => mg >= RANGES[activeRange].min && mg <= RANGES[activeRange].max;
+
+  const filtered = allDishes.filter(d => {
+    const mg = d.total;
+    const cuisine = guessCuisine(d);
+    const q = query.toLowerCase();
+    return inRange(mg) &&
+      (activeCuisine === "All" || cuisine === activeCuisine) &&
+      (q.length < 2 || d.dish.toLowerCase().includes(q) || (d.ingredients || []).some(i => i.name.toLowerCase().includes(q)));
+  });
+
+  const countFor = (range) => allDishes.filter(d => d.total >= RANGES[range].min && d.total <= RANGES[range].max).length;
+
+  // Dish SVG thumbnails — map by total mg range to a food-style illustration
+  function DishThumb({ dish, tall }) {
+    const mg = dish.total;
+    const name = dish.dish.toLowerCase();
+    const h = tall ? 96 : 70;
+    const cy = tall ? 66 : 52;
+    const cyB = tall ? 76 : 58;
+
+    if (/salmon|fish|seafood|bass|trout|cod/.test(name)) return (
+      <svg viewBox={`0 0 130 ${h}`} xmlns="http://www.w3.org/2000/svg" style={{width:"100%",display:"block"}}>
+        <rect width="130" height={h} fill="#DCE8F8"/>
+        <ellipse cx="65" cy={cyB} rx="50" ry="18" fill="#A8C8E8"/>
+        <path d={`M16 ${cy-4} Q65 ${cy-24} 114 ${cy-4}`} stroke="#F0D048" strokeWidth="12" fill="none" strokeLinecap="round"/>
+        <ellipse cx="65" cy={cy+6} rx="44" ry="11" fill="#80A8C8" opacity="0.55"/>
+        <circle cx="32" cy={cy-10} r="6" fill="#98CC68"/>
+        <circle cx="98" cy={cy-10} r="6" fill="#98CC68"/>
+      </svg>
+    );
+    if (/kebab|kofta|seekh|skewer|shish/.test(name)) return (
+      <svg viewBox={`0 0 130 ${h}`} xmlns="http://www.w3.org/2000/svg" style={{width:"100%",display:"block"}}>
+        <rect width="130" height={h} fill="#F0E8D8"/>
+        <ellipse cx="65" cy={cyB} rx="52" ry="20" fill="#D8C890"/>
+        <rect x="60" y={tall?14:10} width="11" height={tall?66:55} rx="5" fill="#B8A060"/>
+        <ellipse cx="65" cy={tall?30:24} rx="16" ry="11" fill="#C89858"/>
+        <ellipse cx="65" cy={tall?46:38} rx="15" ry="11" fill="#D4A868"/>
+        <ellipse cx="65" cy={tall?62:52} rx="16" ry="11" fill="#C09050"/>
+      </svg>
+    );
+    if (/lettuce|wrap|salad|greens|bok choy/.test(name)) return (
+      <svg viewBox={`0 0 130 ${h}`} xmlns="http://www.w3.org/2000/svg" style={{width:"100%",display:"block"}}>
+        <rect width="130" height={h} fill="#D8F0E8"/>
+        <ellipse cx="65" cy={cyB} rx="50" ry="20" fill="#A8DEC0"/>
+        <ellipse cx="46" cy={cy-6} rx="21" ry={tall?26:20} fill="#58C880"/>
+        <ellipse cx="84" cy={cy-10} rx="18" ry={tall?22:17} fill="#40B060"/>
+        <ellipse cx="65" cy={cy-18} rx="14" ry={tall?16:12} fill="#30A050"/>
+      </svg>
+    );
+    if (/chicken|poultry|turkey|rotisserie/.test(name)) return (
+      <svg viewBox={`0 0 130 ${h}`} xmlns="http://www.w3.org/2000/svg" style={{width:"100%",display:"block"}}>
+        <rect width="130" height={h} fill="#F8E8D4"/>
+        <ellipse cx="65" cy={cyB} rx="50" ry="20" fill="#D8A870"/>
+        <ellipse cx="50" cy={cy-4} rx="22" ry="18" fill="#C88848"/>
+        <ellipse cx="80" cy={cy-2} rx="20" ry="16" fill="#B87840"/>
+        <ellipse cx="65" cy={cy-14} rx="16" ry="14" fill="#A06830"/>
+        <ellipse cx="65" cy={cy-20} rx="9" ry="7" fill="#884820"/>
+      </svg>
+    );
+    if (/egg|omelet|omelette|frittata|scramble/.test(name)) return (
+      <svg viewBox={`0 0 130 ${h}`} xmlns="http://www.w3.org/2000/svg" style={{width:"100%",display:"block"}}>
+        <rect width="130" height={h} fill="#FEF5E0"/>
+        <ellipse cx="65" cy={cyB} rx="50" ry="18" fill="#F0D898"/>
+        <ellipse cx="50" cy={cy-4} rx="26" ry="14" fill="#F8E060" opacity="0.9"/>
+        <ellipse cx="80" cy={cy-2} rx="20" ry="12" fill="#F0C840"/>
+        <ellipse cx="65" cy={cy-14} rx="12" ry="7" fill="#E8B820" opacity="0.8"/>
+      </svg>
+    );
+    if (/beef|steak|filet|brisket|oxtail|lamb|meat/.test(name)) return (
+      <svg viewBox={`0 0 130 ${h}`} xmlns="http://www.w3.org/2000/svg" style={{width:"100%",display:"block"}}>
+        <rect width="130" height={h} fill="#EEE0D0"/>
+        <ellipse cx="65" cy={cyB} rx="50" ry="19" fill="#C89060"/>
+        <ellipse cx="65" cy={cy} rx="36" ry="20" fill="#A06040"/>
+        <ellipse cx="55" cy={cy-8} rx="22" ry="15" fill="#904830"/>
+        <ellipse cx="75" cy={cy-6} rx="18" ry="13" fill="#883820"/>
+        <ellipse cx="65" cy={cy-16} rx="14" ry="10" fill="#7A3018"/>
+      </svg>
+    );
+    if (/noodle|pasta|ramen|udon|spaghetti/.test(name)) return (
+      <svg viewBox={`0 0 130 ${h}`} xmlns="http://www.w3.org/2000/svg" style={{width:"100%",display:"block"}}>
+        <rect width="130" height={h} fill="#FFF0D8"/>
+        <ellipse cx="65" cy={cyB} rx="52" ry="18" fill="#E8C878"/>
+        <path d={`M20 ${cy-2} Q40 ${cy-12} 65 ${cy-2} Q90 ${cy+8} 110 ${cy-2}`} stroke="#C89040" strokeWidth="5" fill="none" strokeLinecap="round"/>
+        <path d={`M20 ${cy+4} Q40 ${cy-6} 65 ${cy+4} Q90 ${cy+14} 110 ${cy+4}`} stroke="#B87830" strokeWidth="5" fill="none" strokeLinecap="round"/>
+        <path d={`M20 ${cy+10} Q40 ${cy} 65 ${cy+10} Q90 ${cy+20} 110 ${cy+10}`} stroke="#A86820" strokeWidth="4" fill="none" strokeLinecap="round"/>
+      </svg>
+    );
+    // default — warm stacked ellipses
+    const hue = mg <= 10 ? ["#E8F4DC","#C8D8A0","#A8B870","#889048"] : mg <= 25 ? ["#FEF5E0","#F0D898","#D8A870","#B87840"] : ["#FEF0EE","#F0B8A8","#D07060","#A84030"];
+    return (
+      <svg viewBox={`0 0 130 ${h}`} xmlns="http://www.w3.org/2000/svg" style={{width:"100%",display:"block"}}>
+        <rect width="130" height={h} fill={hue[0]}/>
+        <ellipse cx="65" cy={cyB} rx="52" ry="20" fill={hue[1]}/>
+        <ellipse cx="50" cy={cy} rx="26" ry="18" fill={hue[2]}/>
+        <ellipse cx="80" cy={cy-2} rx="22" ry="16" fill={hue[2]}/>
+        <ellipse cx="65" cy={cy-14} rx="16" ry="12" fill={hue[3]}/>
+      </svg>
+    );
+  }
+
+  return (
+    <div>
+      {/* Search bar */}
+      <div style={{ background: "#fff", padding: "10px 16px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#FDE8E0", border: "1px solid #eacfc3", borderRadius: 999, padding: "0 14px", height: 40 }}>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{flexShrink:0}}><circle cx="6.5" cy="6.5" r="4.5" stroke="#8AAFC0" strokeWidth="1.5"/><line x1="10" y1="10" x2="14" y2="14" stroke="#8AAFC0" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search any dish or ingredient…"
+            style={{ border: "none", background: "transparent", outline: "none", fontSize: 13, color: "#2c5266", flex: 1, fontFamily: "inherit" }} />
+          {query && <button onClick={() => setQuery("")} style={{ background: "none", border: "none", color: "#8AAFC0", cursor: "pointer", fontSize: 16, padding: 0, lineHeight: 1 }}>×</button>}
+        </div>
+      </div>
+
+      {/* Cuisine pills */}
+      <div style={{ display: "flex", gap: 7, padding: "10px 16px 10px", background: "#fff", overflowX: "auto", scrollbarWidth: "none" }}>
+        {CUISINES.map(c => (
+          <button key={c} onClick={() => setActiveCuisine(c)} style={{
+            padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
+            cursor: "pointer", border: `1.5px solid ${activeCuisine === c ? "#3A7090" : "rgba(58,112,144,0.15)"}`,
+            background: activeCuisine === c ? "#3A7090" : "transparent",
+            color: activeCuisine === c ? "#fff" : "#8AAFC0", fontFamily: "inherit",
+            transition: "all 0.15s"
+          }}>{c}</button>
+        ))}
+      </div>
+
+      {/* Range filter buttons */}
+      <div style={{ background: "#fff", padding: "0 16px 14px", borderBottom: "1px solid rgba(58,112,144,0.1)" }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Oxalate Range</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {Object.entries(RANGES).map(([key, r]) => {
+            const active = activeRange === key;
+            return (
+              <button key={key} onClick={() => setActiveRange(key)} style={{
+                flex: 1, padding: "10px 6px 8px", borderRadius: 12, border: `1.5px solid ${active ? r.color : r.border}`,
+                background: active ? r.color : r.bg, color: active ? "#fff" : r.textCol,
+                cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                boxShadow: active ? `0 3px 10px ${r.color}40` : "none", transition: "all 0.18s"
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700 }}>● {r.label}</span>
+                <span style={{ fontSize: 10, opacity: active ? 0.85 : 0.75 }}>{r.range}</span>
+                <span style={{ fontSize: 10, opacity: active ? 0.9 : 0.6, marginTop: 1 }}>{countFor(key)} dishes</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Results header */}
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "12px 16px 8px" }}>
+        <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 15, color: "#3A7090" }}>Dishes</span>
+        <span style={{ fontSize: 11, color: "#8AAFC0" }}>Showing {filtered.length} results</span>
+      </div>
+
+      {/* Masonry grid */}
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "32px 0", color: "#8AAFC0" }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>😔</div>
+          <div style={{ fontSize: 13 }}>No dishes found</div>
+        </div>
+      ) : (
+        <div style={{ padding: "0 16px 20px", columns: 3, columnGap: 8 }}>
+          {filtered.map((dish, i) => {
+            const col = oxColor(dish.total);
+            const tall = i % 3 === 0;
+            return (
+              <div key={i} onClick={() => onSelect(dish)} style={{
+                breakInside: "avoid", background: "#fff", borderRadius: 14,
+                border: "1px solid rgba(58,112,144,0.1)", marginBottom: 10,
+                overflow: "hidden", cursor: "pointer", display: "block",
+                transition: "border-color 0.15s, transform 0.12s"
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "#7AAFD4"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(58,112,144,0.1)"; e.currentTarget.style.transform = "none"; }}
+              >
+                <DishThumb dish={dish} tall={tall} />
+                <div style={{ padding: "8px 10px 10px" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 2 }}>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: col, lineHeight: 1 }}>{dish.total}</span>
+                    <span style={{ fontSize: 10, color: "#8AAFC0" }}>mg</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, fontWeight: 500, color: "#2c5266", lineHeight: 1.35, marginBottom: 4 }}>{dish.dish}</div>
+                  <span style={{ display: "inline-block", padding: "2px 7px", borderRadius: 20, fontSize: 9.5, fontWeight: 500, background: "#FDE8E0", color: "#8AAFC0" }}>{dish.restaurantName}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PageFooter({ onNavigate }) {
   return (
-    <div style={{ background: "#2C5282", padding: "32px 20px 28px", marginTop: 8 }}>
+    <div style={{ background: "#1E4A60", padding: "32px 20px 28px", marginTop: 8 }}>
       {/* Logo */}
       <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
         <img src={LOGO_B64} alt="LOxalate" style={{ height: 28, width: "auto", opacity: 0.9 }} />
@@ -4760,25 +5067,25 @@ function PageFooter({ onNavigate }) {
           ["faq",       "FAQ"],
         ].map(([page, label]) => (
           <button key={page} onClick={() => onNavigate(page)} style={{
-            background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)",
+            background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.25)",
             borderRadius: 999, padding: "5px 13px", color: "rgba(255,255,255,0.8)",
             fontSize: 12, fontWeight: 600, cursor: "pointer"
           }}>{label}</button>
         ))}
       </div>
       {/* Sources one-liner */}
-      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.6, marginBottom: 16 }}>
+      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.6, marginBottom: 16 }}>
         Clinical sources: National Kidney Foundation · NIDDK · Urology Care Foundation ·
         Jill Harris RD (Kidney Stone Diet) · Melanie Betz MS RD (The Kidney Dietitian) ·
         Journal of Renal Nutrition
       </div>
       {/* Disclaimer */}
-      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", lineHeight: 1.6, marginBottom: 16, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 14 }}>
+      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", lineHeight: 1.6, marginBottom: 16, borderTop: "1px solid rgba(255,255,255,0.15)", paddingTop: 14 }}>
         ⚠️ LOxalate is a dietary reference tool, not a substitute for medical advice.
         Oxalate targets vary by individual — always consult your nephrologist or registered
         dietitian before making significant dietary changes.
       </div>
-      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", textAlign: "center" }}>
+      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", textAlign: "center" }}>
         © {new Date().getFullYear()} LOxalate · loxalate.me · All rights reserved
       </div>
     </div>
@@ -4788,10 +5095,10 @@ function PageFooter({ onNavigate }) {
 // ─── ABOUT PAGE ───────────────────────────────────────────────────────────────
 function AboutPage({ onNavigate }) {
   return (
-    <div style={{ background: "#F7F9FC", minHeight: "100vh", paddingBottom: 80 }}>
+    <div style={{ background: "#FDE8E0", minHeight: "100vh", paddingBottom: 80 }}>
 
       {/* Hero */}
-      <div style={{ background: "#2C5282", padding: "36px 22px 40px", position: "relative", overflow: "hidden" }}>
+      <div style={{ background: "#3A7090", padding: "36px 22px 40px", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -60, right: -40, width: 220, height: 220, borderRadius: "50%", background: "rgba(122,175,212,0.12)" }} />
         <div style={{ position: "absolute", bottom: -30, left: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(122,175,212,0.08)" }} />
         <div style={{ position: "relative", zIndex: 2 }}>
@@ -4809,58 +5116,58 @@ function AboutPage({ onNavigate }) {
       <div style={{ padding: "28px 22px 0" }}>
 
         {/* Chapter 1 */}
-        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #BFDBFE", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #D4E7F2", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#2C5282", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>😤</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282" }}>The "Healthy" Routine That Wasn't</div>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#3A7090", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>😤</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#3A7090" }}>The "Healthy" Routine That Wasn't</div>
           </div>
-          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: 0 }}>
+          <p style={{ fontSize: 16, color: "#8AAFC0", lineHeight: 1.85, margin: 0 }}>
             In late October 2024, I was on a roll. Cooking for myself every night — spinach, kale, carrots,
             chicken. Working out after work. All the things you're supposed to do. Then in late November,
             I learned I had a kidney stone. My doctor's advice? Lay off the red meat and eat more vegetables.
           </p>
-          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: "12px 0 0" }}>
+          <p style={{ fontSize: 16, color: "#8AAFC0", lineHeight: 1.85, margin: "12px 0 0" }}>
             I was confused. <strong>That was already my routine.</strong>
           </p>
         </div>
 
         {/* Chapter 2 */}
-        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #BFDBFE", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #D4E7F2", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#7AAFD4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>💡</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282" }}>The Oxalate Rabbit Hole</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#3A7090" }}>The Oxalate Rabbit Hole</div>
           </div>
-          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: 0 }}>
+          <p style={{ fontSize: 16, color: "#8AAFC0", lineHeight: 1.85, margin: 0 }}>
             Like anyone else, I turned to the internet. That's when I discovered <strong>calcium oxalates</strong> —
             a naturally occurring compound in many foods. The kicker? My entire "healthy" diet was
             loaded with them. Spinach. Kale. Almonds. Sweet potatoes. The foods I was eating every
             single day were the exact foods my kidneys couldn't handle.
           </p>
-          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: "12px 0 0" }}>
+          <p style={{ fontSize: 16, color: "#8AAFC0", lineHeight: 1.85, margin: "12px 0 0" }}>
             I went on a low-oxalate diet for a week. The pain stopped. But staying on it was <em>brutal</em> —
             especially when eating out with friends or family.
           </p>
         </div>
 
         {/* Chapter 3 */}
-        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #BFDBFE", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #D4E7F2", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#2C5282", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛠</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282" }}>Building the Thing I Needed</div>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#3A7090", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛠</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#3A7090" }}>Building the Thing I Needed</div>
           </div>
-          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: 0 }}>
+          <p style={{ fontSize: 16, color: "#8AAFC0", lineHeight: 1.85, margin: 0 }}>
             The tracking list I was using turned out to be outdated. So I built a small app to validate
             oxalate content per serving and keep track of what I was cooking. That turned into a
             restaurant map. The map turned into a community. One iteration at a time, <strong>LOxalate.me</strong> took shape.
           </p>
-          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: "12px 0 0" }}>
+          <p style={{ fontSize: 16, color: "#8AAFC0", lineHeight: 1.85, margin: "12px 0 0" }}>
             The question driving everything: <em>"Wouldn't it be nice to find other people dealing with
             this — and share what's actually working?"</em>
           </p>
         </div>
 
         {/* Mission */}
-        <div style={{ background: "#2C5282", borderRadius: 18, padding: "22px", marginBottom: 14 }}>
+        <div style={{ background: "#3A7090", borderRadius: 18, padding: "22px", marginBottom: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 10 }}>Our Mission</div>
           <div style={{ fontSize: 18, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.4, marginBottom: 12 }}>
             Make low-oxalate living less lonely, less confusing, and a lot more doable.
@@ -4873,8 +5180,8 @@ function AboutPage({ onNavigate }) {
         </div>
 
         {/* What we are / aren't */}
-        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #BFDBFE", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#2C5282", marginBottom: 14 }}>What LOxalate Is (and Isn't)</div>
+        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #D4E7F2", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "#3A7090", marginBottom: 14 }}>What LOxalate Is (and Isn't)</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[
               { icon: "✅", text: "A restaurant finder for low-oxalate dining in Pasadena & beyond" },
@@ -4886,7 +5193,7 @@ function AboutPage({ onNavigate }) {
             ].map((item, i) => (
               <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
-                <span style={{ fontSize: 15, color: "#374151", lineHeight: 1.6 }}>{item.text}</span>
+                <span style={{ fontSize: 15, color: "#8AAFC0", lineHeight: 1.6 }}>{item.text}</span>
               </div>
             ))}
           </div>
@@ -4894,10 +5201,10 @@ function AboutPage({ onNavigate }) {
 
         {/* CTA */}
         <div style={{ display: "flex", gap: 10, marginBottom: 4 }}>
-          <button onClick={() => onNavigate("map")} style={{ flex: 1, padding: "14px", background: "#2C5282", color: "#FFFFFF", border: "none", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer" }}>
+          <button onClick={() => onNavigate("map")} style={{ flex: 1, padding: "14px", background: "#3A7090", color: "#FFFFFF", border: "none", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer" }}>
             🗺 Explore the Map
           </button>
-          <button onClick={() => onNavigate("faq")} style={{ flex: 1, padding: "14px", background: "#FFFFFF", color: "#2C5282", border: "2px solid #2C5282", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer" }}>
+          <button onClick={() => onNavigate("faq")} style={{ flex: 1, padding: "14px", background: "#FFFFFF", color: "#3A7090", border: "2px solid #3A7090", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer" }}>
             Read the FAQ
           </button>
         </div>
@@ -4977,10 +5284,10 @@ function FAQPage({ onNavigate }) {
   ];
 
   return (
-    <div style={{ background: "#F7F9FC", minHeight: "100vh", paddingBottom: 80 }}>
+    <div style={{ background: "#FDE8E0", minHeight: "100vh", paddingBottom: 80 }}>
 
       {/* Hero */}
-      <div style={{ background: "#2C5282", padding: "32px 22px 36px" }}>
+      <div style={{ background: "#3A7090", padding: "32px 22px 36px" }}>
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>Frequently Asked Questions</div>
         <div style={{ fontSize: 30, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.2, marginBottom: 10 }}>
           Questions about oxalates,<br />kidney stones, and LOxalate.
@@ -4998,12 +5305,12 @@ function FAQPage({ onNavigate }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {section.questions.map((item, qi) => {
                 return (
-                  <div key={qi} style={{ background: "#FFFFFF", borderRadius: 16, border: "1.5px solid #BFDBFE", overflow: "hidden", boxShadow: "0 2px 8px rgba(44,82,130,0.05)" }}>
+                  <div key={qi} style={{ background: "#FFFFFF", borderRadius: 16, border: "1.5px solid #D4E7F2", overflow: "hidden", boxShadow: "0 2px 8px rgba(44,82,130,0.05)" }}>
                     <div style={{ padding: "18px 20px 6px" }}>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b", lineHeight: 1.4 }}>{item.q}</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#3A7090", lineHeight: 1.4 }}>{item.q}</div>
                     </div>
                     <div style={{ padding: "10px 20px 20px" }}>
-                      <p style={{ fontSize: 15, color: "#374151", lineHeight: 1.85, margin: 0 }}>{item.a}</p>
+                      <p style={{ fontSize: 15, color: "#8AAFC0", lineHeight: 1.85, margin: 0 }}>{item.a}</p>
                     </div>
                   </div>
                 );
@@ -5013,7 +5320,7 @@ function FAQPage({ onNavigate }) {
         ))}
 
         {/* Still have questions */}
-        <div style={{ background: "#2C5282", borderRadius: 18, padding: "22px", marginBottom: 8 }}>
+        <div style={{ background: "#3A7090", borderRadius: 18, padding: "22px", marginBottom: 8 }}>
           <div style={{ fontSize: 16, fontWeight: 900, color: "#FFFFFF", marginBottom: 8 }}>Still have questions?</div>
           <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", lineHeight: 1.7, marginBottom: 16 }}>
             Ask the community — someone's probably been through the same thing.
@@ -5032,7 +5339,7 @@ function FAQPage({ onNavigate }) {
 
 function CommunityPage({ onNavigate = () => {} }) {
   const POST_TYPES = [
-    { id: "recipe",  label: "🥗 Recipe",         color: "#7AAFD4", bg: "#7AAFD4", border: "#93C5FD" },
+    { id: "recipe",  label: "🥗 Recipe",         color: "#7AAFD4", bg: "#7AAFD4", border: "#D4E7F2" },
     { id: "event",   label: "📅 Event",           color: "#7AAFD4", bg: "#7AAFD4", border: "#7AAFD4" },
     { id: "weekly",  label: "📊 Weekly Check-in", color: "#7AAFD4", bg: "#7AAFD4", border: "#7AAFD4" },
   ];
@@ -5191,7 +5498,7 @@ function CommunityPage({ onNavigate = () => {} }) {
 
       {/* ── Hero banner ── */}
       <div style={{
-        background: "#2C5282",
+        background: "#3A7090",
         padding: "24px 20px 28px", color: "white", position: "relative", overflow: "hidden"
       }}>
         <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
@@ -5217,70 +5524,70 @@ function CommunityPage({ onNavigate = () => {} }) {
 
         {/* ── Request to Add Form ── */}
         {showRequest && (
-          <div style={{ background: "#FFFFFF", borderRadius: 18, border: "1px solid #BFDBFE", padding: "20px", marginBottom: 14, boxShadow: "0 4px 20px rgba(44,82,130,0.1)" }}>
+          <div style={{ background: "#FFFFFF", borderRadius: 18, border: "1px solid #D4E7F2", padding: "20px", marginBottom: 14, boxShadow: "0 4px 20px rgba(44,82,130,0.1)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "#2C5282" }}>📍 Request a Restaurant</div>
-              <button onClick={() => { setShowRequest(false); setReqError(""); }} style={{ background: "none", border: "none", color: "#6E7187", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#3A7090" }}>📍 Request a Restaurant</div>
+              <button onClick={() => { setShowRequest(false); setReqError(""); }} style={{ background: "none", border: "none", color: "#8AAFC0", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
             </div>
-            <div style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6, marginBottom: 16, background: "#F7F9FC", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ fontSize: 14, color: "#8AAFC0", lineHeight: 1.6, marginBottom: 16, background: "#FDE8E0", borderRadius: 10, padding: "10px 12px" }}>
               Know a restaurant with great low-oxalate options? Tell us and we'll research and add it to the map.
             </div>
 
             {/* Restaurant Name */}
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Restaurant Name *</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#8AAFC0", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Restaurant Name *</div>
               <input value={reqName} onChange={e => { setReqName(e.target.value); setReqError(""); }}
                 placeholder="e.g. Café de Leche"
                 maxLength={80}
-                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #D4E7F2", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
                 onFocus={e => e.target.style.borderColor = "#7AAFD4"}
-                onBlur={e => e.target.style.borderColor = "#BFDBFE"}
+                onBlur={e => e.target.style.borderColor = "#D4E7F2"}
               />
             </div>
 
             {/* Address */}
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Address</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#8AAFC0", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Address</div>
               <input value={reqAddress} onChange={e => setReqAddress(e.target.value)}
                 placeholder="e.g. 123 Colorado Blvd, Pasadena CA"
                 maxLength={120}
-                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #D4E7F2", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
                 onFocus={e => e.target.style.borderColor = "#7AAFD4"}
-                onBlur={e => e.target.style.borderColor = "#BFDBFE"}
+                onBlur={e => e.target.style.borderColor = "#D4E7F2"}
               />
             </div>
 
             {/* Dish */}
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Dish / Menu Item *</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#8AAFC0", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Dish / Menu Item *</div>
               <input value={reqDish} onChange={e => { setReqDish(e.target.value); setReqError(""); }}
                 placeholder="e.g. Grilled Salmon Bowl"
                 maxLength={80}
-                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #D4E7F2", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
                 onFocus={e => e.target.style.borderColor = "#7AAFD4"}
-                onBlur={e => e.target.style.borderColor = "#BFDBFE"}
+                onBlur={e => e.target.style.borderColor = "#D4E7F2"}
               />
             </div>
 
             {/* Ingredients */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Ingredients (optional)</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#8AAFC0", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Ingredients (optional)</div>
               <textarea value={reqIngredients} onChange={e => setReqIngredients(e.target.value)}
                 placeholder="List the main ingredients you know about..."
                 maxLength={500}
                 rows={3}
-                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical", lineHeight: 1.6 }}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #D4E7F2", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical", lineHeight: 1.6 }}
                 onFocus={e => e.target.style.borderColor = "#7AAFD4"}
-                onBlur={e => e.target.style.borderColor = "#BFDBFE"}
+                onBlur={e => e.target.style.borderColor = "#D4E7F2"}
               />
             </div>
 
             {/* Photo upload */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Menu Photo (optional)</div>
-              <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "14px", border: "2px dashed #BFDBFE", borderRadius: 12, cursor: "pointer", background: "#F7F9FC", transition: "border-color 0.15s" }}
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#8AAFC0", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Menu Photo (optional)</div>
+              <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "14px", border: "2px dashed #D4E7F2", borderRadius: 12, cursor: "pointer", background: "#FDE8E0", transition: "border-color 0.15s" }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = "#7AAFD4"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "#BFDBFE"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "#D4E7F2"}
               >
                 <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
                   onChange={e => {
@@ -5294,26 +5601,26 @@ function CommunityPage({ onNavigate = () => {} }) {
                 />
                 <span style={{ fontSize: 22 }}>📸</span>
                 <div>
-                  <div style={{ fontSize: 17, fontWeight: 700, color: "#2C5282" }}>Take a photo or upload</div>
-                  <div style={{ fontSize: 14, color: "#6E7187" }}>Snap the menu to help us identify ingredients</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: "#3A7090" }}>Take a photo or upload</div>
+                  <div style={{ fontSize: 14, color: "#8AAFC0" }}>Snap the menu to help us identify ingredients</div>
                 </div>
               </label>
               {reqPhotoPreview && (
                 <div style={{ marginTop: 10, position: "relative", display: "inline-block" }}>
-                  <img src={reqPhotoPreview} alt="menu preview" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 10, border: "1px solid #BFDBFE" }} />
+                  <img src={reqPhotoPreview} alt="menu preview" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 10, border: "1px solid #D4E7F2" }} />
                   <button onClick={() => { setReqPhoto(null); setReqPhotoPreview(null); }}
                     style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.5)", border: "none", color: "white", width: 24, height: 24, borderRadius: "50%", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
                 </div>
               )}
-              <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 6 }}>
+              <div style={{ fontSize: 10, color: "#C8BEBB", marginTop: 6 }}>
                 📝 Full AI ingredient scanning coming soon. For now your photo helps our team manually review.
               </div>
             </div>
 
-            {reqError && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 12, color: "#dc2626", fontWeight: 600 }}>{reqError}</div>}
+            {reqError && <div style={{ background: "#FDE8E0", border: "1px solid #E05540", borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 12, color: "#E05540", fontWeight: 600 }}>{reqError}</div>}
 
             <button onClick={submitRequest} style={{
-              width: "100%", padding: "14px", background: reqSubmitted ? "#7AAFD4" : "#2C5282",
+              width: "100%", padding: "14px", background: reqSubmitted ? "#7AAFD4" : "#3A7090",
               color: "#FFFFFF", border: "none", borderRadius: 12,
               fontSize: 16, fontWeight: 800, cursor: "pointer", transition: "all 0.2s"
             }}>
@@ -5324,17 +5631,17 @@ function CommunityPage({ onNavigate = () => {} }) {
 
         {/* ── Composer form ── */}
         {showForm && (
-          <div style={{ background: "#FFFFFF", borderRadius: 18, border: "1px solid #e5e7eb", padding: "18px", marginBottom: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#111827", marginBottom: 14 }}>New Post</div>
+          <div style={{ background: "#FFFFFF", borderRadius: 18, border: "1px solid #D4E7F2", padding: "18px", marginBottom: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#3A7090", marginBottom: 14 }}>New Post</div>
 
             {/* Type picker */}
             <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
               {POST_TYPES.map(pt => (
                 <button key={pt.id} onClick={() => { setPostType(pt.id); setFormError(""); }} style={{
                   padding: "7px 13px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-                  border: `2px solid ${postType === pt.id ? pt.color : "#CBD5E1"}`,
+                  border: `2px solid ${postType === pt.id ? pt.color : "#D4E7F2"}`,
                   background: postType === pt.id ? pt.bg : "#FFFFFF",
-                  color: postType === pt.id ? pt.color : "#6E7187",
+                  color: postType === pt.id ? pt.color : "#8AAFC0",
                   cursor: "pointer", transition: "all 0.15s"
                 }}>{pt.label}</button>
               ))}
@@ -5344,7 +5651,7 @@ function CommunityPage({ onNavigate = () => {} }) {
             <input value={name} onChange={e => { setName(e.target.value); setFormError(""); }}
               placeholder="Your name or nickname"
               maxLength={50}
-              style={{ width: "100%", padding: "10px 12px", marginBottom: 10, fontSize: 15, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "10px 12px", marginBottom: 10, fontSize: 15, border: "1px solid #D4E7F2", borderRadius: 12, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
             />
 
             {/* Content — character counter + maxLength */}
@@ -5356,20 +5663,20 @@ function CommunityPage({ onNavigate = () => {} }) {
                   postType === "event"  ? "Tell us about your event — when, where, what to bring..." :
                                          "How did your week go? Share your total mg and any wins..."
                 }
-                style={{ width: "100%", padding: "10px 12px 26px", fontSize: 15, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px 26px", fontSize: 15, border: "1px solid #D4E7F2", borderRadius: 12, outline: "none", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
               />
-              <span style={{ position: "absolute", bottom: 8, right: 10, fontSize: 11, color: content.length > 900 ? "#ef4444" : "#B0B3C4", pointerEvents: "none" }}>
+              <span style={{ position: "absolute", bottom: 8, right: 10, fontSize: 11, color: content.length > 900 ? "#E05540" : "#D4E7F2", pointerEvents: "none" }}>
                 {content.length}/1000
               </span>
             </div>
 
             {/* Weekly mg field */}
             {postType === "weekly" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 12px", background: "#7AAFD4", borderRadius: 12, border: "1px solid #7dd3fc" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 12px", background: "#7AAFD4", borderRadius: 12, border: "1px solid #D4E7F2" }}>
                 <span style={{ fontSize: 18 }}>📊</span>
                 <input type="number" value={oxTotal} onChange={e => { setOxTotal(e.target.value); setFormError(""); }}
                   placeholder="e.g. 450" min={0} max={99999}
-                  style={{ width: 80, padding: "6px 8px", fontSize: 17, fontWeight: 700, border: "1px solid #7dd3fc", borderRadius: 6, outline: "none", fontFamily: "inherit", textAlign: "center" }}
+                  style={{ width: 80, padding: "6px 8px", fontSize: 17, fontWeight: 700, border: "1px solid #D4E7F2", borderRadius: 6, outline: "none", fontFamily: "inherit", textAlign: "center" }}
                 />
                 <span style={{ fontSize: 13, color: "#7AAFD4", fontWeight: 600 }}>mg total this week</span>
               </div>
@@ -5377,18 +5684,18 @@ function CommunityPage({ onNavigate = () => {} }) {
 
             {/* Validation / rate-limit error */}
             {formError && (
-              <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 12, padding: "9px 12px", marginBottom: 10, fontSize: 13, color: "#dc2626", fontWeight: 600 }}>
+              <div style={{ background: "#FDE8E0", border: "1px solid #E05540", borderRadius: 12, padding: "9px 12px", marginBottom: 10, fontSize: 13, color: "#E05540", fontWeight: 600 }}>
                 {formError}
               </div>
             )}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => { setShowForm(false); setFormError(""); }} style={{ flex: 1, padding: "10px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#FFFFFF", color: "#6E7187", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={() => { setShowForm(false); setFormError(""); }} style={{ flex: 1, padding: "10px", borderRadius: 12, border: "1px solid #D4E7F2", background: "#FFFFFF", color: "#8AAFC0", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
                 Cancel
               </button>
               <button onClick={submitPost} disabled={posting || !name.trim() || !content.trim()} style={{
                 flex: 2, padding: "10px", borderRadius: 12, border: "none",
-                background: posting || !name.trim() || !content.trim() ? "#A8DEC0" : "#7AAFD4",
+                background: posting || !name.trim() || !content.trim() ? "#7AAFD4" : "#7AAFD4",
                 color: "white", fontSize: 16, fontWeight: 700,
                 cursor: posting ? "wait" : "pointer", transition: "background 0.15s"
               }}>{posting ? "Posting..." : "Post to Community"}</button>
@@ -5398,7 +5705,7 @@ function CommunityPage({ onNavigate = () => {} }) {
 
         {/* ── Rate limit toast ── */}
         {rateLimitMsg && (
-          <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", zIndex: 999, background: "#1f2937", color: "white", padding: "10px 20px", borderRadius: 999, fontSize: 15, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", whiteSpace: "nowrap" }}>
+          <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", zIndex: 999, background: "#3A7090", color: "white", padding: "10px 20px", borderRadius: 999, fontSize: 15, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", whiteSpace: "nowrap" }}>
             {rateLimitMsg}
           </div>
         )}
@@ -5409,9 +5716,9 @@ function CommunityPage({ onNavigate = () => {} }) {
             <button key={id} onClick={() => setFilterType(id)} style={{
               padding: "6px 13px", borderRadius: 999, fontSize: 12, fontWeight: 700,
               border: "1px solid", whiteSpace: "nowrap", cursor: "pointer", transition: "all 0.15s",
-              background: filterType === id ? "#111827" : "#FFFFFF",
-              borderColor: filterType === id ? "#111827" : "#CBD5E1",
-              color: filterType === id ? "white" : "#6E7187",
+              background: filterType === id ? "#3A7090" : "#FFFFFF",
+              borderColor: filterType === id ? "#3A7090" : "#D4E7F2",
+              color: filterType === id ? "white" : "#8AAFC0",
               flexShrink: 0
             }}>{label}</button>
           ))}
@@ -5419,7 +5726,7 @@ function CommunityPage({ onNavigate = () => {} }) {
 
         {/* ── Feed ── */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: "48px 0", color: "#6E7187" }}>
+          <div style={{ textAlign: "center", padding: "48px 0", color: "#8AAFC0" }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>🌿</div>
             <div style={{ fontSize: 13 }}>Loading community...</div>
           </div>
@@ -5428,10 +5735,10 @@ function CommunityPage({ onNavigate = () => {} }) {
             <div style={{ fontSize: 48, marginBottom: 12 }}>
               {filterType === "recipe" ? "🥗" : filterType === "event" ? "📅" : filterType === "weekly" ? "📊" : "🌱"}
             </div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "#374151", marginBottom: 6 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#8AAFC0", marginBottom: 6 }}>
               {posts.length === 0 ? "Be the first to post!" : "Nothing here yet"}
             </div>
-            <div style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6 }}>
+            <div style={{ fontSize: 14, color: "#8AAFC0", lineHeight: 1.6 }}>
               {posts.length === 0
                 ? "Share a recipe, plan a picnic, or post your weekly oxalate total to get things started."
                 : "Be the first to share one of these!"}
@@ -5460,8 +5767,8 @@ function CommunityPage({ onNavigate = () => {} }) {
                         {post.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{post.name}</div>
-                        <div style={{ fontSize: 14, color: "#6E7187" }}>{timeAgo(post.ts)}</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: "#3A7090" }}>{post.name}</div>
+                        <div style={{ fontSize: 14, color: "#8AAFC0" }}>{timeAgo(post.ts)}</div>
                       </div>
                     </div>
                     <span style={{
@@ -5474,17 +5781,17 @@ function CommunityPage({ onNavigate = () => {} }) {
                   {post.type === "weekly" && post.oxTotal != null && (
                     <div style={{
                       borderRadius: 14, padding: "10px 14px", marginBottom: 12,
-                      background: post.oxTotal < 350 ? "#7AAFD4" : post.oxTotal < 700 ? "#fffbeb" : "#fef2f2",
-                      border: `1px solid ${post.oxTotal < 350 ? "#93C5FD" : post.oxTotal < 700 ? "#fde68a" : "#fca5a5"}`,
+                      background: post.oxTotal < 350 ? "#7AAFD4" : post.oxTotal < 700 ? "#FDE8E0" : "#FDE8E0",
+                      border: `1px solid ${post.oxTotal < 350 ? "#D4E7F2" : post.oxTotal < 700 ? "#FDE8E0" : "#E05540"}`,
                       display: "flex", alignItems: "center", gap: 12
                     }}>
-                      <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, color: post.oxTotal < 350 ? "#7AAFD4" : post.oxTotal < 700 ? "#d97706" : "#dc2626" }}>
+                      <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, color: post.oxTotal < 350 ? "#7AAFD4" : post.oxTotal < 700 ? "#F5C518" : "#E05540" }}>
                         {post.oxTotal}
                         <span style={{ fontSize: 15, fontWeight: 600 }}>mg</span>
                       </div>
                       <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Weekly Total</div>
-                        <div style={{ fontSize: 14, color: "#6E7187" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#8AAFC0" }}>Weekly Total</div>
+                        <div style={{ fontSize: 14, color: "#8AAFC0" }}>
                           {post.oxTotal < 350 ? "🏆 Outstanding week!" : post.oxTotal < 700 ? "👍 On track" : "💪 Keep going, every day counts"}
                         </div>
                       </div>
@@ -5492,25 +5799,25 @@ function CommunityPage({ onNavigate = () => {} }) {
                   )}
 
                   {/* Post body */}
-                  <div style={{ fontSize: 15, color: "#374151", lineHeight: 1.65, whiteSpace: "pre-wrap", marginBottom: 14 }}>
+                  <div style={{ fontSize: 15, color: "#8AAFC0", lineHeight: 1.65, whiteSpace: "pre-wrap", marginBottom: 14 }}>
                     {post.content}
                   </div>
 
                   {/* Like row */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12, borderTop: "1px solid #f3f4f6" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12, borderTop: "1px solid #FDE8E0" }}>
                     <button onClick={() => toggleLike(post.id)} style={{
                       display: "flex", alignItems: "center", gap: 6, padding: "5px 14px",
-                      borderRadius: 999, border: `1px solid ${isLiked ? "#fca5a5" : "#CBD5E1"}`,
-                      background: isLiked ? "#fef2f2" : "#FFFFFF",
-                      color: isLiked ? "#ef4444" : "#6E7187",
+                      borderRadius: 999, border: `1px solid ${isLiked ? "#E05540" : "#D4E7F2"}`,
+                      background: isLiked ? "#FDE8E0" : "#FFFFFF",
+                      color: isLiked ? "#E05540" : "#8AAFC0",
                       fontSize: 12, fontWeight: 700, cursor: isLiked ? "default" : "pointer", transition: "all 0.15s"
                     }}
-                      onMouseEnter={e => { if (!isLiked) { e.currentTarget.style.borderColor = "#fca5a5"; e.currentTarget.style.color = "#ef4444"; }}}
-                      onMouseLeave={e => { if (!isLiked) { e.currentTarget.style.borderColor = "#CBD5E1"; e.currentTarget.style.color = "#6E7187"; }}}
+                      onMouseEnter={e => { if (!isLiked) { e.currentTarget.style.borderColor = "#E05540"; e.currentTarget.style.color = "#E05540"; }}}
+                      onMouseLeave={e => { if (!isLiked) { e.currentTarget.style.borderColor = "#D4E7F2"; e.currentTarget.style.color = "#8AAFC0"; }}}
                     >
                       {isLiked ? "❤️" : "🤍"} {post.likes || 0}
                     </button>
-                    <span style={{ fontSize: 14, color: "#6E7187" }}>
+                    <span style={{ fontSize: 14, color: "#8AAFC0" }}>
                       {post.type === "recipe" ? "Tap ❤️ if you'd make this" :
                        post.type === "event"  ? "Tap ❤️ if you're interested" :
                                                "Tap ❤️ to cheer them on"}
@@ -5544,7 +5851,7 @@ function CommunityPage({ onNavigate = () => {} }) {
             onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             style={{
               flex: 1, padding: "14px 10px",
-              background: "#2C5282",
+              background: "#3A7090",
               color: "#FFFFFF", border: "none",
               borderRadius: 999,
               fontSize: 16, fontWeight: 800, cursor: "pointer",
@@ -5564,8 +5871,8 @@ function CommunityPage({ onNavigate = () => {} }) {
             style={{
               flex: 1, padding: "14px 10px",
               background: "#FFFFFF",
-              color: "#2C5282",
-              border: "2.5px solid #2C5282",
+              color: "#3A7090",
+              border: "2.5px solid #3A7090",
               borderRadius: 999,
               fontSize: 16, fontWeight: 800, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -5651,23 +5958,23 @@ export default function RestaurantMap() {
   // ── NAV items — bottom bar (Map, Alchemy, Community only) ────────────────
   const NAV = [
     { id: "map", label: "Map", icon: (active) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#7AAFD4" : "#6E7187"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" fill={active ? "#DBEAFE" : "none"}/>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#7AAFD4" : "#8AAFC0"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" fill={active ? "#D4E7F2" : "none"}/>
         <line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
       </svg>
     )},
     { id: "alchemy", label: "Alchemy", icon: (active) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#7AAFD4" : "#6E7187"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#7AAFD4" : "#8AAFC0"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M9 3h6l1 7H8L9 3z"/>
         <path d="M8 10s-4 3.5-4 7a8 8 0 0 0 16 0c0-3.5-4-7-4-7"/>
         <line x1="12" y1="3" x2="12" y2="6"/>
-        <circle cx="12" cy="17" r="2" fill={active ? "#DBEAFE" : "none"}/>
+        <circle cx="12" cy="17" r="2" fill={active ? "#D4E7F2" : "none"}/>
       </svg>
     )},
     { id: "community", label: "Community", icon: (active) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#7AAFD4" : "#6E7187"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#7AAFD4" : "#8AAFC0"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-        <circle cx="9" cy="7" r="4" fill={active ? "#DBEAFE" : "none"}/>
+        <circle cx="9" cy="7" r="4" fill={active ? "#D4E7F2" : "none"}/>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
         <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
       </svg>
@@ -5675,12 +5982,12 @@ export default function RestaurantMap() {
   ];
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", background: "#F7F9FC", minHeight: "100vh", color: "#111827", paddingBottom: 74, paddingTop: 62 }}>
+    <div style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", background: "#FDE8E0", minHeight: "100vh", color: "#3A7090", paddingBottom: 74, paddingTop: 62 }}>
 
       {/* ══ GLOBAL HEADER ══════════════════════════════════════════════════════ */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 600,
-        background: "#2C5282",
+        background: "#3A7090",
         height: 62,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 20px",
@@ -5719,7 +6026,7 @@ export default function RestaurantMap() {
             width: 28, height: 28, borderRadius: "50%",
             background: "#7AAFD4",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 13, fontWeight: 900, color: "#2C5282", flexShrink: 0
+            fontSize: 13, fontWeight: 900, color: "#3A7090", flexShrink: 0
           }}>
             {profile.name ? profile.name.charAt(0).toUpperCase() : "👤"}
           </div>
@@ -5733,11 +6040,11 @@ export default function RestaurantMap() {
       {activePage === "map" && (
         <>
           {/* Sub-tabs */}
-          <div style={{ background: "#FFFFFF", borderBottom: "1px solid #e5e7eb", display: "flex", overflowX: "auto" }}>
+          <div style={{ background: "#FFFFFF", borderBottom: "1px solid #D4E7F2", display: "flex", overflowX: "auto" }}>
             {[["map","🗺 Find Restaurant"],["dish","🍽 Search Dish"]].map(([id, label]) => (
               <button key={id} onClick={() => setActiveTab(id)} style={{
                 padding: "10px 16px", fontSize: 15, fontWeight: 600, border: "none", background: "none",
-                cursor: "pointer", color: activeTab === id ? "#7AAFD4" : "#6E7187",
+                cursor: "pointer", color: activeTab === id ? "#7AAFD4" : "#8AAFC0",
                 borderBottom: activeTab === id ? "2px solid #7AAFD4" : "2px solid transparent",
                 whiteSpace: "nowrap", flexShrink: 0
               }}>{label}</button>
@@ -5749,31 +6056,31 @@ export default function RestaurantMap() {
             {/* ── Find Restaurant ── */}
             {activeTab === "map" && (
               <>
-                <div style={{ background: "#FFFFFF", borderRadius: 14, border: "1px solid #e5e7eb", padding: "12px 14px", marginBottom: 12 }}>
+                <div style={{ background: "#FFFFFF", borderRadius: 14, border: "1px solid #D4E7F2", padding: "12px 14px", marginBottom: 12 }}>
                   <div style={{ position: "relative", marginBottom: 10 }}>
                     <input value={query}
                       onChange={e => { setQuery(e.target.value); setShowSuggestions(true); setSelectedRestaurant(null); }}
                       onFocus={() => setShowSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowSuggestions(false), 160)}
                       placeholder="Search restaurant or neighborhood..."
-                      style={{ width: "100%", padding: "8px 32px 8px 12px", fontSize: 15, border: "1px solid #d1d5db", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                      style={{ width: "100%", padding: "8px 32px 8px 12px", fontSize: 15, border: "1px solid #D4E7F2", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
                     />
-                    {query && <button onClick={() => { setQuery(""); setSelectedRestaurant(null); }} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6E7187", cursor: "pointer", fontSize: 18 }}>×</button>}
+                    {query && <button onClick={() => { setQuery(""); setSelectedRestaurant(null); }} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#8AAFC0", cursor: "pointer", fontSize: 18 }}>×</button>}
                     {showSuggestions && suggestions.length > 0 && (
-                      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: "#FFFFFF", border: "1px solid #e5e7eb", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", marginTop: 4 }}>
+                      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100, background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", marginTop: 4 }}>
                         {suggestions.map(r => (
                           <div key={r.name} onMouseDown={() => { setQuery(r.name); setSelectedRestaurant(r); setShowSuggestions(false); }}
-                            style={{ padding: "9px 12px", cursor: "pointer", borderBottom: "1px solid #f3f4f6", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                            style={{ padding: "9px 12px", cursor: "pointer", borderBottom: "1px solid #FDE8E0", display: "flex", justifyContent: "space-between", alignItems: "center" }}
                             onMouseEnter={e => e.currentTarget.style.background = "#7AAFD4"}
                             onMouseLeave={e => e.currentTarget.style.background = ""}
                           >
                             <div>
                               <div style={{ fontSize: 15, fontWeight: 600 }}>{r.name}</div>
-                              <div style={{ fontSize: 14, color: "#6E7187" }}>{r.area} · {r.type}{r.options.length > 0 ? ` · ${r.options.length} dishes` : ""}</div>
+                              <div style={{ fontSize: 14, color: "#8AAFC0" }}>{r.area} · {r.type}{r.options.length > 0 ? ` · ${r.options.length} dishes` : ""}</div>
                             </div>
                             {(() => {
                               const avg = r.options.length > 0 ? Math.round(r.options.reduce((s,o) => s+(o.total||0),0)/r.options.length*10)/10 : null;
-                              const rc = avg===null?"#9ca3af":avg<=10?"#7AAFD4":avg<=25?"#f59e0b":"#ef4444";
+                              const rc = avg===null?"#C8BEBB":avg<=10?"#7AAFD4":avg<=25?"#F5C518":"#E05540";
                               return <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 999, background: rc+"18", color: rc, border: `1px solid ${rc}44` }}>{avg!==null?`${avg}mg avg`:"No data"}</span>;
                             })()}
                           </div>
@@ -5785,20 +6092,20 @@ export default function RestaurantMap() {
                     {[["all",`All (${RESTAURANTS.length})`],["low","✓ Low Oxalate"],["high","⚠ High Oxalate"]].map(([id, label]) => (
                       <button key={id} onClick={() => setFilter(id)} style={{
                         padding: "5px 11px", fontSize: 15, fontWeight: 600, borderRadius: 10, cursor: "pointer", border: "1px solid",
-                        background: filter === id ? (id==="low"?"#2C5282":id==="high"?"#dc2626":"#2C5282") : "#FFFFFF",
-                        borderColor: filter === id ? (id==="low"?"#2C5282":id==="high"?"#dc2626":"#2C5282") : "#CBD5E1",
-                        color: filter === id ? "#ffffff" : "#6E7187"
+                        background: filter === id ? (id==="low"?"#3A7090":id==="high"?"#E05540":"#3A7090") : "#FFFFFF",
+                        borderColor: filter === id ? (id==="low"?"#3A7090":id==="high"?"#E05540":"#3A7090") : "#D4E7F2",
+                        color: filter === id ? "#ffffff" : "#8AAFC0"
                       }}>{label}</button>
                     ))}
                   </div>
                   {/* Avg Oxalate/Dish — one line after filters */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", whiteSpace: "nowrap" }}>Avg Oxalate/Dish:</span>
-                    {[["#7AAFD4","≤10mg","Low"],["#f59e0b","11–25mg","Med"],["#ef4444",">25mg","High"],["#9ca3af","—","No data"]].map(([c,r,l]) => (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#8AAFC0", whiteSpace: "nowrap" }}>Avg Oxalate/Dish:</span>
+                    {[["#7AAFD4","≤10mg","Low"],["#F5C518","11–25mg","Med"],["#E05540",">25mg","High"],["#C8BEBB","—","No data"]].map(([c,r,l]) => (
                       <div key={l} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <div style={{ width: 10, height: 10, borderRadius: "50%", background: c, flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, color: "#374151", fontWeight: 600 }}>{l}</span>
-                        <span style={{ fontSize: 10, color: "#9ca3af" }}>{r}</span>
+                        <span style={{ fontSize: 11, color: "#8AAFC0", fontWeight: 600 }}>{l}</span>
+                        <span style={{ fontSize: 10, color: "#C8BEBB" }}>{r}</span>
                       </div>
                     ))}
                   </div>
@@ -5815,26 +6122,26 @@ export default function RestaurantMap() {
                 {/* Best picks strip — 12 curated dishes 0–7mg, one per restaurant */}
                 {(() => {
                   const CURATED_PICKS = [
-    { dish: "Scrambled Eggs with Bacon", restaurantName: "Kitchen Mouse", restaurantArea: "Highland Park", total: 1, emoji: "🍳" },
-    { dish: "Egg White Omelet", restaurantName: "The Arbour", restaurantArea: "Pasadena", total: 2, emoji: "🥚" },
-    { dish: "Oak-Grilled Filet Mignon", restaurantName: "Parkway Grill", restaurantArea: "Pasadena", total: 4, emoji: "🥩" },
-    { dish: "Grilled Whole Fish", restaurantName: "Marina Restaurant", restaurantArea: "Pasadena", total: 4, emoji: "🐟" },
-    { dish: "Grilled Fish with Bok Choy", restaurantName: "Joy", restaurantArea: "Highland Park", total: 5, emoji: "🫛" },
-    { dish: "Chicken Lettuce Cups", restaurantName: "Star Leaf", restaurantArea: "Pasadena", total: 5, emoji: "🥬" },
-    { dish: "Braised Oxtail", restaurantName: "Bone Kettle", restaurantArea: "Pasadena", total: 5, emoji: "🍲" },
-    { dish: "Grilled Salmon with Herb Butter", restaurantName: "Deda Restaurant", restaurantArea: "Pasadena", total: 6, emoji: "🐠" },
-    { dish: "Lamb Seekh Kebab", restaurantName: "Annapurna Grill", restaurantArea: "Pasadena", total: 6, emoji: "🍢" },
-    { dish: "Steamed Fish with Ginger", restaurantName: "Top Restaurant", restaurantArea: "Pasadena", total: 7, emoji: "🫙" },
-    { dish: "Chicken Breast Kebab", restaurantName: "Heidar Baba", restaurantArea: "Pasadena", total: 7, emoji: "🍡" },
-    { dish: "Rotisserie Chicken Plate", restaurantName: "Urban Plates", restaurantArea: "Pasadena", total: 7, emoji: "🍗" }
+    { dish: "Scrambled Eggs with Bacon", restaurantName: "Kitchen Mouse", restaurantArea: "Highland Park", total: 1, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#FEF5E0"/><ellipse cx="65" cy="58" rx="50" ry="18" fill="#F0D898"/><ellipse cx="50" cy="44" rx="26" ry="14" fill="#F8E060" opacity="0.9"/><ellipse cx="80" cy="46" rx="20" ry="12" fill="#F0C840"/><ellipse cx="50" cy="38" rx="14" ry="10" fill="#F0C830" opacity="0.7"/><ellipse cx="36" cy="46" rx="9" ry="6" fill="#D04828"/><ellipse cx="94" cy="48" rx="8" ry="5" fill="#C04020"/><ellipse cx="65" cy="36" rx="12" ry="7" fill="#E8B820" opacity="0.8"/></svg> },
+    { dish: "Egg White Omelet", restaurantName: "The Arbour", restaurantArea: "Pasadena", total: 2, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#F5F0E8"/><ellipse cx="65" cy="56" rx="52" ry="20" fill="#E8DCC8"/><ellipse cx="65" cy="46" rx="44" ry="16" fill="#F5EDD8"/><ellipse cx="65" cy="42" rx="36" ry="12" fill="#FFFAF0"/><ellipse cx="50" cy="40" rx="16" ry="9" fill="#F8F4EC"/><ellipse cx="80" cy="42" rx="14" ry="8" fill="#F0EAE0"/><ellipse cx="65" cy="38" rx="12" ry="6" fill="#E8E0D0" opacity="0.7"/></svg> },
+    { dish: "Oak-Grilled Filet Mignon", restaurantName: "Parkway Grill", restaurantArea: "Pasadena", total: 4, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#EEE0D0"/><ellipse cx="65" cy="58" rx="50" ry="19" fill="#C89060"/><ellipse cx="65" cy="46" rx="36" ry="20" fill="#A06040"/><ellipse cx="55" cy="40" rx="22" ry="15" fill="#904830"/><ellipse cx="75" cy="42" rx="18" ry="13" fill="#883820"/><ellipse cx="65" cy="35" rx="14" ry="10" fill="#7A3018"/></svg> },
+    { dish: "Grilled Whole Fish", restaurantName: "Marina Restaurant", restaurantArea: "Pasadena", total: 4, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#DCE8F8"/><ellipse cx="65" cy="56" rx="50" ry="18" fill="#A8C8E8"/><path d="M22 46 Q65 24 108 46" stroke="#7AAFD4" stroke-width="14" fill="none" stroke-linecap="round"/><ellipse cx="65" cy="54" rx="42" ry="11" fill="#80A8C8" opacity="0.55"/><ellipse cx="108" cy="46" rx="12" ry="9" fill="#5A8AB0"/><circle cx="38" cy="40" r="5" fill="#9EC8E0" opacity="0.8"/><circle cx="92" cy="40" r="4" fill="#9EC8E0" opacity="0.8"/><circle cx="30" cy="44" r="3" fill="#3A7090"/></svg> },
+    { dish: "Grilled Fish with Bok Choy", restaurantName: "Joy", restaurantArea: "Highland Park", total: 5, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#E0EEE8"/><ellipse cx="65" cy="57" rx="50" ry="18" fill="#A8D0B8"/><path d="M24 47 Q65 28 106 47" stroke="#7AAFD4" stroke-width="12" fill="none" stroke-linecap="round"/><ellipse cx="30" cy="42" rx="13" ry="18" fill="#58C880" opacity="0.85"/><ellipse cx="100" cy="43" rx="11" ry="16" fill="#48B870"/><ellipse cx="22" cy="38" rx="8" ry="13" fill="#40A860" opacity="0.7"/><ellipse cx="65" cy="54" rx="38" ry="10" fill="#80B898" opacity="0.6"/></svg> },
+    { dish: "Chicken Lettuce Cups", restaurantName: "Star Leaf", restaurantArea: "Pasadena", total: 5, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#D8F0E8"/><ellipse cx="65" cy="54" rx="48" ry="22" fill="#A8DEC0"/><ellipse cx="48" cy="40" rx="19" ry="25" fill="#58C880"/><ellipse cx="82" cy="37" rx="16" ry="21" fill="#40B060"/><ellipse cx="65" cy="30" rx="13" ry="16" fill="#30A050"/></svg> },
+    { dish: "Braised Oxtail", restaurantName: "Bone Kettle", restaurantArea: "Pasadena", total: 5, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#EEE0D0"/><ellipse cx="65" cy="54" rx="50" ry="22" fill="#D0A878"/><ellipse cx="48" cy="42" rx="22" ry="16" fill="#B07848"/><ellipse cx="82" cy="44" rx="18" ry="14" fill="#986038"/><ellipse cx="65" cy="36" rx="14" ry="12" fill="#805028"/></svg> },
+    { dish: "Grilled Salmon with Herb Butter", restaurantName: "Deda Restaurant", restaurantArea: "Pasadena", total: 6, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#DCE8F8"/><ellipse cx="65" cy="52" rx="50" ry="20" fill="#A8C8E8"/><path d="M16 50 Q65 30 114 50" stroke="#F0D048" stroke-width="11" fill="none" stroke-linecap="round"/><ellipse cx="65" cy="60" rx="44" ry="13" fill="#80A8C8" opacity="0.55"/><circle cx="32" cy="43" r="7" fill="#98CC68"/><circle cx="98" cy="43" r="7" fill="#98CC68"/></svg> },
+    { dish: "Lamb Seekh Kebab", restaurantName: "Annapurna Grill", restaurantArea: "Pasadena", total: 6, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#F0E8D8"/><ellipse cx="65" cy="64" rx="52" ry="22" fill="#D8C890"/><rect x="60" y="16" width="11" height="54" rx="5" fill="#B8A060"/><ellipse cx="65" cy="27" rx="16" ry="11" fill="#C89858"/><ellipse cx="65" cy="42" rx="15" ry="11" fill="#D4A868"/><ellipse cx="65" cy="57" rx="16" ry="11" fill="#C09050"/></svg> },
+    { dish: "Steamed Fish with Ginger", restaurantName: "Top Restaurant", restaurantArea: "Pasadena", total: 7, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#E0EEF8"/><ellipse cx="65" cy="58" rx="50" ry="18" fill="#A0C8E0"/><ellipse cx="65" cy="44" rx="40" ry="14" fill="#C8DFF0"/><path d="M25 45 Q65 24 105 45" stroke="#7AAFD4" stroke-width="13" fill="none" stroke-linecap="round"/><ellipse cx="65" cy="54" rx="38" ry="10" fill="#88BEDD" opacity="0.6"/><circle cx="44" cy="40" r="5" fill="#e8f4e0"/><circle cx="86" cy="40" r="5" fill="#e8f4e0"/></svg> },
+    { dish: "Chicken Breast Kebab", restaurantName: "Heidar Baba", restaurantArea: "Pasadena", total: 7, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#F8ECD8"/><ellipse cx="65" cy="64" rx="50" ry="19" fill="#E0C088"/><rect x="60" y="14" width="10" height="56" rx="4" fill="#C8A050"/><ellipse cx="65" cy="26" rx="17" ry="10" fill="#E8B868"/><ellipse cx="65" cy="40" rx="16" ry="10" fill="#F0C878"/><ellipse cx="65" cy="54" rx="17" ry="10" fill="#E0B060"/></svg> },
+    { dish: "Rotisserie Chicken Plate", restaurantName: "Urban Plates", restaurantArea: "Pasadena", total: 7, svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#F8E8D4"/><ellipse cx="65" cy="58" rx="50" ry="20" fill="#D8A870"/><ellipse cx="50" cy="44" rx="22" ry="18" fill="#C88848"/><ellipse cx="80" cy="46" rx="20" ry="16" fill="#B87840"/><ellipse cx="65" cy="36" rx="16" ry="14" fill="#A06830"/><ellipse cx="65" cy="30" rx="9" ry="7" fill="#884820"/></svg> }
   ];
                   const loopPicks = [...CURATED_PICKS, ...CURATED_PICKS];
                   return (
                     <div style={{ marginTop: 16 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                         <div style={{ width: 3, height: 18, background: "#7AAFD4", borderRadius: 2 }} />
-                        <div style={{ fontSize: 17, fontWeight: 800, color: "#111827" }}>Lowest Oxalate Picks</div>
-                        <div style={{ fontSize: 14, color: "#6E7187" }}>0–7mg · one per restaurant</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: "#3A7090" }}>Lowest Oxalate Picks</div>
+                        <div style={{ fontSize: 14, color: "#8AAFC0" }}>0–7mg · one per restaurant</div>
                       </div>
                       <div ref={picksScrollRef} style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6, scrollbarWidth: "none", msOverflowStyle: "none", cursor: "grab" }}>
                         {loopPicks.map((p, i) => {
@@ -5845,10 +6152,10 @@ export default function RestaurantMap() {
                               onMouseEnter={e => { e.currentTarget.style.borderColor = col; e.currentTarget.style.boxShadow = `0 4px 14px ${col}25`; }}
                               onMouseLeave={e => { e.currentTarget.style.borderColor = col+"33"; e.currentTarget.style.boxShadow = "none"; }}
                             >
-                              <div style={{ fontSize: 26, marginBottom: 6, lineHeight: 1 }}>{p.emoji}</div>
-                              <div style={{ fontSize: 20, fontWeight: 900, color: col, lineHeight: 1, marginBottom: 4 }}>{p.total}<span style={{ fontSize: 11, fontWeight: 600, color: "#6E7187" }}>mg</span></div>
-                              <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", lineHeight: 1.3, marginBottom: 3 }}>{p.dish}</div>
-                              <div style={{ fontSize: 14, color: "#6E7187" }}>{p.restaurantName}</div>
+                              <div style={{ width: "100%", height: 72, borderRadius: 10, overflow: "hidden", marginBottom: 8 }}>{p.svg}</div>
+                              <div style={{ fontSize: 20, fontWeight: 900, color: col, lineHeight: 1, marginBottom: 4 }}>{p.total}<span style={{ fontSize: 11, fontWeight: 600, color: "#8AAFC0" }}>mg</span></div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: "#3A7090", lineHeight: 1.3, marginBottom: 3 }}>{p.dish}</div>
+                              <div style={{ fontSize: 14, color: "#8AAFC0" }}>{p.restaurantName}</div>
                             </div>
                           );
                         })}
@@ -5861,49 +6168,7 @@ export default function RestaurantMap() {
 
             {/* ── Search Dish ── */}
             {activeTab === "dish" && (
-              <div>
-                <div style={{ position: "relative", marginBottom: 12 }}>
-                  <input value={mealQuery} onChange={e => setMealQuery(e.target.value)}
-                    placeholder="Search dishes or ingredients…"
-                    style={{ width: "100%", padding: "10px 36px 10px 14px", fontSize: 15, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
-                  />
-                  {mealQuery && <button onClick={() => setMealQuery("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6E7187", cursor: "pointer", fontSize: 18 }}>×</button>}
-                </div>
-                {mealQuery.length < 2 ? (
-                  <div style={{ textAlign: "center", padding: "32px 0", color: "#6E7187" }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
-                    <div style={{ fontSize: 13 }}>Search {ALL_DISHES.length} dishes from {RESTAURANTS.filter(r => r.options.length > 0).length} restaurants</div>
-                    <div style={{ fontSize: 11, marginTop: 4 }}>Also searches by ingredient name</div>
-                  </div>
-                ) : mealResults.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "32px 0", color: "#6E7187" }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>😔</div>
-                    <div style={{ fontSize: 13 }}>No results for "{mealQuery}"</div>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {mealResults.map((dish, i) => {
-                      const col = oxColor(dish.total);
-                      return (
-                        <div key={i} onClick={() => setSelectedDish(dish)}
-                          style={{ background: "#FFFFFF", border: "1px solid #e5e7eb", borderRadius: 14, padding: "12px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = "#7AAFD4"; e.currentTarget.style.background = "#7AAFD4"; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = "#CBD5E1"; e.currentTarget.style.background = "#FFFFFF"; }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 2 }}>{dish.dish}</div>
-                            <div style={{ fontSize: 14, color: "#6E7187" }}>{dish.restaurantName} · {dish.restaurantArea}</div>
-                          </div>
-                          <div style={{ textAlign: "center", flexShrink: 0 }}>
-                            <div style={{ fontSize: 26, fontWeight: 800, color: col, lineHeight: 1 }}>{dish.total}</div>
-                            <div style={{ fontSize: 10, color: col, fontWeight: 700, textTransform: "uppercase" }}>mg</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <SearchDishPanel allDishes={ALL_DISHES} onSelect={setSelectedDish} />
             )}
 
 
@@ -5930,7 +6195,7 @@ export default function RestaurantMap() {
       {/* ══ BOTTOM NAV — Map · Alchemy · Community ══════════════════════════════ */}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 500,
-        background: "#FFFFFF", borderTop: "1.5px solid #BFDBFE",
+        background: "#FFFFFF", borderTop: "1.5px solid #D4E7F2",
         display: "flex", height: 70, boxShadow: "0 -4px 20px rgba(44,82,130,0.1)"
       }}>
         {NAV.map(({ id, label, icon }) => {
@@ -5945,7 +6210,7 @@ export default function RestaurantMap() {
                 <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 32, height: 3, background: "#7AAFD4", borderRadius: "0 0 6px 6px" }} />
               )}
               {icon(active)}
-              <span style={{ fontSize: 13, fontWeight: active ? 800 : 500, color: active ? "#2C5282" : "#6E7187", letterSpacing: active ? "0.01em" : 0 }}>{label}</span>
+              <span style={{ fontSize: 13, fontWeight: active ? 800 : 500, color: active ? "#3A7090" : "#8AAFC0", letterSpacing: active ? "0.01em" : 0 }}>{label}</span>
             </button>
           );
         })}
