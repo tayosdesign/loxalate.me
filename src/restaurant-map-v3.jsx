@@ -14,9 +14,6 @@ if (typeof document !== "undefined" && !document.getElementById("lox-fonts")) {
   document.head.appendChild(link);
 }
 
-import { ALL_DISHES } from "./data/dishes";
-
-  r.options.map(o => ({ ...o, restaurantName: r.name, restaurantArea: r.area }))
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
