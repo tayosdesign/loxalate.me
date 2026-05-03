@@ -2644,7 +2644,8 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
       )}
 
     </div>
-
+    );
+}
 
 // ─── COMMUNITY PAGE ──────────────────────────────────────────────────────────
 
