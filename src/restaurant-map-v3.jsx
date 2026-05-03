@@ -2655,7 +2655,7 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
 
 
 // ─── SHARED FOOTER ────────────────────────────────────────────────────────────
-    </div>
+ 
   );
 }
 
