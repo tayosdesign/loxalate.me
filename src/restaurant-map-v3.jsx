@@ -2652,7 +2652,27 @@ function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = 
 
 // ─── SHARED FOOTER ────────────────────────────────────────────────────────────
  
-
+function PageFooter({ onNavigate }) {
+  return (
+    <div style={{
+      background: "#3A7090", padding: "28px 20px 20px",
+      marginTop: 24, textAlign: "center"
+    }}>
+      <img src={LOGO_B64} alt="Loxalate" style={{ height: 28, width: "auto", opacity: 0.85, marginBottom: 12 }} />
+      <div style={{ display: "flex", justifyContent: "center", gap: 20, flexWrap: "wrap", marginBottom: 14 }}>
+        {[["map","Map"],["alchemy","Alchemy"],["community","Community"],["about","About"],["faq","FAQ"]].map(([id, label]) => (
+          <button key={id} onClick={() => onNavigate(id)} style={{
+            background: "none", border: "none", color: "rgba(255,255,255,0.7)",
+            fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 0
+          }}>{label}</button>
+        ))}
+      </div>
+      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
+        © {new Date().getFullYear()} Loxalate · loxalate.me · All rights reserved
+      </div>
+    </div>
+  );
+}
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
