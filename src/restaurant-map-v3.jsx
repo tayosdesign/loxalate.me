@@ -741,6 +741,34 @@ function checkRateLimit(action) {
 }
 
 // ─── COMMUNITY PAGE ──────────────────────────────────────────────────────────
+
+function CommunityPage({ onNavigate }) {
+  return (
+    <div style={{ background: "#FDE8E0", minHeight: "100vh", paddingBottom: 80 }}>
+      <div style={{ background: "#3A7090", padding: "28px 20px" }}>
+        <div style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
+          LOW OXALATE LIVING
+        </div>
+        <div style={{ fontSize: 28, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.2, marginBottom: 8 }}>
+          Community 🌿
+        </div>
+        <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
+          Coming soon — share dishes, tips, and low-oxalate wins with the Pasadena community.
+        </div>
+      </div>
+      <div style={{ padding: "24px 16px", textAlign: "center" }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🌱</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "#3A7090", marginBottom: 8 }}>
+          Community features coming soon
+        </div>
+        <div style={{ fontSize: 14, color: "#8AAFC0", lineHeight: 1.6 }}>
+          We're building a space for the low-oxalate community to connect, share restaurant finds, and support each other.
+        </div>
+      </div>
+      <PageFooter onNavigate={onNavigate} />
+    </div>
+  );
+}
 // Aesthetic: organic wellness — deep forest greens, warm cream, editorial cards
 // Health app deep-links: Apple Health, Google Fit, Samsung Health
 
