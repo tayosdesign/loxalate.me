@@ -2177,11 +2177,5 @@ const ALL_DISHES = RESTAURANTS.flatMap(r =>
   r.options.map(o => ({ ...o, restaurantName: r.name, restaurantArea: r.area }))
 );
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
 
-// ─── LEAFLET MAP COMPONENT ───────────────────────────────────────────────────
-
-function LeafletMap({ restaurants, selectedRestaurant, onSelectRestaurant, filter }) {
-  const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
 export { RESTAURANTS, ALL_DISHES };
