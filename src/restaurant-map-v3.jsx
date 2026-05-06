@@ -1860,7 +1860,7 @@ export default function RestaurantMap() {
 
             {/* ── Search Dish ── */}
             {activeTab === "dish" && (
-              <SearchDishPanel />
+              <SearchDishPanel onAdd={addToLog} />
             )}
 
 
