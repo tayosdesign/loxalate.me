@@ -252,56 +252,162 @@ function CuisineSection({ cuisine, dishes, activeCuisine, oxBand, searchQuery, e
 
 // ── DISH DETAIL MODAL ─────────────────────────────────────────────────────────
 
-function DishDetail({ dish, onClose }) {
+function oxColor(mg) {
+  if (mg <= 5)  return "#7AAFD4";
+  if (mg <= 15) return "#7AAFD4";
+  if (mg <= 30) return "#F5C518";
+  return "#E05540";
+}
+function oxLabel(mg) {
+  if (mg <= 5)  return "Very Low";
+  if (mg <= 15) return "Low";
+  if (mg <= 30) return "Moderate";
+  return "High";
+}
+
+function DishDetail({ dish, onClose, onAdd }) {
+  const [added, setAdded] = useState(false);
   if (!dish) return null;
+
+  const total = dish.total ?? dish.mg ?? 0;
+  const col   = oxColor(total);
+  const label = oxLabel(total);
+  const restaurantName = dish.restaurantName ?? dish.restaurant ?? "";
+  const area           = dish.restaurantArea ?? dish.area ?? "";
+  const maxOx = dish.ingredients?.length
+    ? Math.max(...dish.ingredients.map(i => i.oxalate), 1)
+    : 1;
+
+  const q   = encodeURIComponent(restaurantName);
+  const loc = encodeURIComponent("Pasadena, CA");
+  const platforms = [
+    {
+      name: "Uber Eats",
+      url: `https://www.ubereats.com/search?q=${q}&pl=JTdCJTIyYWRkcmVzcyUyMiUzQSUyMlBhc2FkZW5hJTIwQ0ElMjIlN0Q=`,
+      bg: "#000000",
+      label: "Uber Eats",
+    },
+    {
+      name: "DoorDash",
+      url: `https://www.doordash.com/search/store/${q}/?query=${q}`,
+      bg: "#ff3008",
+      label: "DoorDash",
+    },
+    {
+      name: "Grubhub",
+      url: `https://www.grubhub.com/search?queryText=${q}&orderMethod=delivery&locationMode=DELIVERY&facetSet=umamiV2&pageSize=20&hideHateos=true&fetchCount=20&cityState=Pasadena%2C+CA`,
+      bg: "#f63440",
+      label: "Grubhub",
+    },
+  ];
+
+  function handleAdd() {
+    if (onAdd) onAdd({ ...dish, total, restaurantName, restaurantArea: area });
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1800);
+  }
+
   return (
     <div style={{
-      position: "absolute", inset: 0, background: "rgba(44,82,102,0.55)",
-      zIndex: 100, display: "flex", alignItems: "flex-end",
+      position: "fixed", inset: 0, background: "rgba(44,82,102,0.7)",
+      zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center",
+      backdropFilter: "blur(4px)",
     }} onClick={onClose}>
       <div style={{
-        background: "#fff", borderRadius: "20px 20px 0 0", width: "100%",
-        padding: "20px 20px 32px", maxHeight: "70%", overflowY: "auto",
+        background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 520,
+        maxHeight: "90vh", overflowY: "auto", paddingBottom: 32,
       }} onClick={e => e.stopPropagation()}>
-        <div style={{ width: 36, height: 4, background: "#e0d0c8", borderRadius: 2, margin: "0 auto 16px" }} />
-        <div style={{ fontSize: 17, fontWeight: 600, color: "#2c5266", marginBottom: 4 }}>{dish.dish}</div>
-        <div style={{ fontSize: 12, color: "#8AAFC0", marginBottom: 12 }}>{dish.restaurant} · {dish.area}</div>
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <div style={{ background: "#e8f4fb", borderRadius: 10, padding: "8px 14px", textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "#3A7090" }}>{dish.mg}</div>
-            <div style={{ fontSize: 10, color: "#8AAFC0" }}>mg oxalate</div>
-          </div>
-          <div style={{ background: "#fdf5f2", borderRadius: 10, padding: "8px 14px", flex: 1 }}>
-            <div style={{ fontSize: 10, color: "#8AAFC0", marginBottom: 3 }}>Modifications</div>
-            <div style={{ fontSize: 12, color: "#2c5266", lineHeight: 1.45 }}>{dish.modifications}</div>
-          </div>
+
+        {/* Handle */}
+        <div style={{ padding: "14px 0 0", display: "flex", justifyContent: "center" }}>
+          <div style={{ width: 40, height: 4, background: "#D4E7F2", borderRadius: 2 }} />
         </div>
-        {dish.cookingMethod && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 10, color: "#8AAFC0", marginBottom: 4, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>How it's made</div>
-            <div style={{ fontSize: 12, color: "#2c5266" }}>{dish.cookingMethod}</div>
-          </div>
-        )}
-        {dish.ingredients?.length > 0 && (
-          <div>
-            <div style={{ fontSize: 10, color: "#8AAFC0", marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ingredients</div>
-            {dish.ingredients.map((ing, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(58,112,144,0.07)" }}>
-                <div>
-                  <div style={{ fontSize: 12, color: "#2c5266", fontWeight: 500 }}>{ing.name}</div>
-                  <div style={{ fontSize: 11, color: "#8AAFC0" }}>{ing.amount}</div>
-                </div>
-                <div style={{
-                  fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 20,
-                  background: ing.oxalate === 0 ? "#eef8ee" : ing.oxalate > 10 ? "#fef0ee" : "#e8f4fb",
-                  color: ing.oxalate === 0 ? "#3a8030" : ing.oxalate > 10 ? "#a83020" : "#2a6a90",
-                }}>
-                  {ing.oxalate}mg
-                </div>
+
+        <div style={{ padding: "12px 20px 0" }}>
+          {/* Restaurant + dish name */}
+          <div style={{ fontSize: 12, color: "#8AAFC0", marginBottom: 4 }}>{restaurantName} · {area}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "#3A7090", lineHeight: 1.2, marginBottom: 12 }}>{dish.dish}</div>
+
+          {/* Oxalate badge + modifications */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+            <div style={{ background: col + "18", border: `1.5px solid ${col}44`, borderRadius: 12, padding: "10px 14px", textAlign: "center", flexShrink: 0 }}>
+              <div style={{ fontSize: 26, fontWeight: 900, color: col, lineHeight: 1 }}>{total}</div>
+              <div style={{ fontSize: 10, color: col, fontWeight: 700 }}>mg oxalate</div>
+              <div style={{ fontSize: 10, color: col }}>{label}</div>
+            </div>
+            {dish.modifications && dish.modifications !== "None needed" && (
+              <div style={{ background: "#FDE8E0", borderRadius: 12, padding: "10px 14px", flex: 1 }}>
+                <div style={{ fontSize: 10, color: "#8AAFC0", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Tip</div>
+                <div style={{ fontSize: 13, color: "#3A7090", lineHeight: 1.5 }}>{dish.modifications}</div>
               </div>
-            ))}
+            )}
           </div>
-        )}
+
+          {/* Cooking method */}
+          {dish.cookingMethod && (
+            <div style={{ fontSize: 13, color: "#8AAFC0", marginBottom: 14 }}>🍳 {dish.cookingMethod}</div>
+          )}
+
+          {/* Ingredients */}
+          {dish.ingredients?.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Ingredients</div>
+              {dish.ingredients.map((ing, i) => {
+                const pct = ing.oxalate === 0 ? 0 : Math.max((ing.oxalate / maxOx) * 100, 6);
+                const c   = oxColor(ing.oxalate);
+                return (
+                  <div key={i} style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                      <span style={{ fontSize: 13, color: "#3A7090", fontWeight: 500 }}>{ing.name}</span>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "#8AAFC0" }}>{ing.amount}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#8AAFC0" : c, minWidth: 36, textAlign: "right" }}>
+                          {ing.oxalate}mg
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ height: 3, background: "#F0F0F0", borderRadius: 2 }}>
+                      {ing.oxalate > 0 && <div style={{ height: "100%", width: `${pct}%`, background: c, borderRadius: 2 }} />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Order buttons */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Order for delivery</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {platforms.map(p => (
+                <a key={p.name} href={p.url} target="_blank" rel="noreferrer"
+                  style={{
+                    flex: 1, padding: "10px 6px", borderRadius: 12, textAlign: "center",
+                    background: p.bg, color: "#fff", fontSize: 12, fontWeight: 700,
+                    textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  {p.label}
+                </a>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: "#C8BEBB", textAlign: "center", marginTop: 6 }}>
+              Opens search for "{restaurantName}"
+            </div>
+          </div>
+
+          {/* Add to log button */}
+          <button onClick={handleAdd} style={{
+            width: "100%", padding: "15px",
+            background: added ? "#7AAFD4" : "#3A7090",
+            color: added ? "#3A7090" : "#FFFFFF",
+            border: "none", borderRadius: 16,
+            fontSize: 16, fontWeight: 800, cursor: "pointer",
+            transition: "all 0.2s",
+          }}>
+            {added ? "✓ Added to Log!" : "📋 Add to Today's Log"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -309,7 +415,7 @@ function DishDetail({ dish, onClose }) {
 
 // ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 
-export default function SearchDishPanel() {
+export default function SearchDishPanel({ onAdd = () => {} }) {
   const [search,        setSearch]        = useState("");
   const [activeCuisine, setActiveCuisine] = useState("All");
   const [oxBand,        setOxBand]        = useState("low");
@@ -418,8 +524,7 @@ export default function SearchDishPanel() {
       </div>
 
       {/* Dish detail bottom sheet */}
-      <DishDetail dish={selectedDish} onClose={() => setSelectedDish(null)} />
+      <DishDetail dish={selectedDish} onClose={() => setSelectedDish(null)} onAdd={onAdd} />
     </div>
   );
 }
-
