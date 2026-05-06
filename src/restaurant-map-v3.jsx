@@ -742,1962 +742,843 @@ function checkRateLimit(action) {
 
 // ─── COMMUNITY PAGE ──────────────────────────────────────────────────────────
 
-function CommunityPage({ onNavigate }) {
+function PageFooter({ onNavigate }) {
   return (
-    <div style={{ background: "#FDE8E0", minHeight: "100vh", paddingBottom: 80 }}>
-      <div style={{ background: "#3A7090", padding: "28px 20px" }}>
-        <div style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
-          LOW OXALATE LIVING
-        </div>
-        <div style={{ fontSize: 28, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.2, marginBottom: 8 }}>
-          Community 🌿
-        </div>
-        <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
-          Coming soon — share dishes, tips, and low-oxalate wins with the Pasadena community.
-        </div>
+    <div style={{ background: "#2C5282", padding: "32px 20px 28px", marginTop: 8 }}>
+      {/* Logo */}
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+        <img src={LOGO_B64} alt="LOxalate" style={{ height: 28, width: "auto", opacity: 0.9 }} />
       </div>
-      <div style={{ padding: "24px 16px", textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🌱</div>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "#3A7090", marginBottom: 8 }}>
-          Community features coming soon
-        </div>
-        <div style={{ fontSize: 14, color: "#8AAFC0", lineHeight: 1.6 }}>
-          We're building a space for the low-oxalate community to connect, share restaurant finds, and support each other.
-        </div>
-      </div>
-      <PageFooter onNavigate={onNavigate} />
-    </div>
-  );
-}
-// Aesthetic: organic wellness — deep forest greens, warm cream, editorial cards
-// Health app deep-links: Apple Health, Google Fit, Samsung Health
-
-const PROFILE_DEFAULTS = {
-  // § 1 — Identity
-  name: "", height_ft: "", height_in: "", weight: "", sex: "",
-  // § 2 — Oxalate & Eating Goals
-  oxalate_goal: "moderate",   // low | moderate | strict
-  oxalate_custom_mg: "",
-  eating_goals: [],
-  dietary_restrictions: [],
-  food_allergies: [],
-  intolerances: [],
-  texture_sensitive: null,    // true | false | null
-  // § 3 — Medical
-  medical_conditions: [],
-  kidney_stone_size_mm: "",
-  // § 4–6 — Food Preferences
-  fav_cuisines: [],
-  fav_ingredients: [],
-  disliked_ingredients: [],
-  // § 7 — Spice
-  spicy: null,                // "none" | "mild" | "medium" | "hot" | "extreme"
-  // § 8 — Patterns
-  eating_patterns: [],
-  // § 9 — Meals
-  meals_per_day: 3,
-  count_snacks: true,
-  // § 10 — Location
-  location: "",
-  // Health app
-  health_connected: [],
-};
-
-function sanitizeProfileText(s) {
-  if (typeof s !== "string") return "";
-  return s.replace(/\0/g,"").replace(/<[^>]*>/g,"").replace(/javascript\s*:/gi,"").trim().slice(0, 120);
-}
-
-// ── Health app deep-link helpers ──────────────────────────────────────────────
-function openHealthApp(app) {
-  const urls = {
-    apple:   "x-apple-health://",          // iOS Health app
-    google:  "https://health.google.com",  // Google Health / Fit web portal
-    samsung: "shealth://",                 // Samsung Health app URI scheme
-  };
-  const fallbacks = {
-    apple:   "https://support.apple.com/guide/iphone/intro-to-health-iphbefba7973/ios",
-    google:  "https://health.google.com",
-    samsung: "https://health.samsung.com",
-  };
-  try {
-    window.location.href = urls[app];
-    // Fallback after 1.5s if app doesn't open
-    setTimeout(() => window.open(fallbacks[app], "_blank"), 1500);
-  } catch {
-    window.open(fallbacks[app], "_blank");
-  }
-}
-
-// ── Tag chip input ────────────────────────────────────────────────────────────
-function TagInput({ tags, onChange, placeholder, suggestions = [], maxTags = 20 }) {
-  const [input, setInput] = useState("");
-  const [showSug, setShowSug] = useState(false);
-
-  const filtered = suggestions.filter(s =>
-    s.toLowerCase().includes(input.toLowerCase()) && !tags.includes(s)
-  ).slice(0, 6);
-
-  function add(val) {
-    const clean = sanitizeProfileText(val);
-    if (!clean || tags.includes(clean) || tags.length >= maxTags) return;
-    onChange([...tags, clean]);
-    setInput(""); setShowSug(false);
-  }
-
-  function remove(tag) { onChange(tags.filter(t => t !== tag)); }
-
-  return (
-    <div style={{ position: "relative" }}>
-      <div style={{
-        display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 10px",
-        border: "1.5px solid #D4E7F2", borderRadius: 14, background: "#FFFFFF",
-        minHeight: 44, cursor: "text"
-      }} onClick={() => document.getElementById("ti-" + placeholder)?.focus()}>
-        {tags.map(tag => (
-          <span key={tag} style={{
-            display: "inline-flex", alignItems: "center", gap: 4,
-            background: "#7AAFD4", color: "#7AAFD4", fontSize: 12, fontWeight: 700,
-            padding: "3px 10px 3px 10px", borderRadius: 999
-          }}>
-            {tag}
-            <button onClick={() => remove(tag)} style={{ background: "none", border: "none", color: "#7AAFD4", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 2 }}>×</button>
-          </span>
-        ))}
-        <input
-          id={"ti-" + placeholder}
-          value={input}
-          onChange={e => { setInput(e.target.value); setShowSug(true); }}
-          onKeyDown={e => { if ((e.key === "Enter" || e.key === ",") && input.trim()) { e.preventDefault(); add(input.trim()); } if (e.key === "Backspace" && !input && tags.length) remove(tags[tags.length-1]); }}
-          onFocus={() => setShowSug(true)}
-          onBlur={() => setTimeout(() => setShowSug(false), 180)}
-          placeholder={tags.length === 0 ? placeholder : ""}
-          style={{ border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#3A7090", fontFamily: "inherit", minWidth: 100, flex: 1 }}
-        />
-      </div>
-      {showSug && (filtered.length > 0 || input.length > 1) && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.1)", marginTop: 4, overflow: "hidden" }}>
-          {input.length > 1 && !filtered.includes(input.trim()) && (
-            <div onMouseDown={() => add(input.trim())} style={{ padding: "9px 12px", cursor: "pointer", fontSize: 13, color: "#7AAFD4", fontWeight: 700, borderBottom: filtered.length ? "1px solid #FDE8E0" : "none" }}>
-              + Add "{input.trim()}"
-            </div>
-          )}
-          {filtered.map(s => (
-            <div key={s} onMouseDown={() => add(s)} style={{ padding: "9px 12px", cursor: "pointer", fontSize: 15, color: "#8AAFC0" }}
-              onMouseEnter={e => e.currentTarget.style.background = "#7AAFD4"}
-              onMouseLeave={e => e.currentTarget.style.background = ""}
-            >{s}</div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Multi-select pill group ───────────────────────────────────────────────────
-function PillGroup({ options, value, onChange, multi = true, color = "#7AAFD4" }) {
-  function toggle(opt) {
-    if (!multi) { onChange(value === opt ? null : opt); return; }
-    onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt]);
-  }
-  const isActive = (opt) => multi ? (value || []).includes(opt) : value === opt;
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-      {options.map(opt => {
-        const active = isActive(typeof opt === "object" ? opt.value : opt);
-        const label  = typeof opt === "object" ? opt.label : opt;
-        const val    = typeof opt === "object" ? opt.value : opt;
-        return (
-          <button key={val} onClick={() => toggle(val)} style={{
-            padding: "7px 14px", borderRadius: 999, fontSize: 15, fontWeight: 600, cursor: "pointer",
-            border: `1.5px solid ${active ? color : "#D4E7F2"}`,
-            background: active ? color : "#FFFFFF",
-            color: active ? "#FFFFFF" : "#8AAFC0",
-            transition: "all 0.15s"
+      {/* Nav links */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+        {[
+          ["map",       "🗺 Map"],
+          ["alchemy",   "🧪 Alchemy"],
+          ["community", "👥 Community"],
+          ["about",     "About"],
+          ["faq",       "FAQ"],
+        ].map(([page, label]) => (
+          <button key={page} onClick={() => onNavigate(page)} style={{
+            background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: 999, padding: "5px 13px", color: "rgba(255,255,255,0.8)",
+            fontSize: 12, fontWeight: 600, cursor: "pointer"
           }}>{label}</button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Section card wrapper ──────────────────────────────────────────────────────
-function SectionCard({ number, title, icon, children, accent = "#7AAFD4" }) {
-  return (
-    <div style={{
-      background: "#FFFFFF", borderRadius: 16, border: "1px solid #8AAFC0",
-      overflow: "hidden", marginBottom: 16,
-      boxShadow: "0 2px 12px rgba(45,80,22,0.06)"
-    }}>
-      {/* Section header */}
-      <div style={{
-        background: `${accent}10`,
-        borderBottom: `1px solid ${accent}22`,
-        padding: "14px 18px",
-        display: "flex", alignItems: "center", gap: 12
-      }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 12,
-          background: accent, color: "#FFFFFF",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 11, fontWeight: 900
-        }}>{number}</div>
-        <span style={{ fontSize: 16, fontWeight: 800, color: "#3A7090", letterSpacing: "-0.01em" }}>
-          {icon} {title}
-        </span>
+        ))}
       </div>
-      <div style={{ padding: "16px 18px" }}>
-        {children}
+      {/* Sources one-liner */}
+      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.6, marginBottom: 16 }}>
+        Clinical sources: National Kidney Foundation · NIDDK · Urology Care Foundation ·
+        Jill Harris RD (Kidney Stone Diet) · Melanie Betz MS RD (The Kidney Dietitian) ·
+        Journal of Renal Nutrition
+      </div>
+      {/* Disclaimer */}
+      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", lineHeight: 1.6, marginBottom: 16, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 14 }}>
+        ⚠️ LOxalate is a dietary reference tool, not a substitute for medical advice.
+        Oxalate targets vary by individual — always consult your nephrologist or registered
+        dietitian before making significant dietary changes.
+      </div>
+      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", textAlign: "center" }}>
+        © {new Date().getFullYear()} LOxalate · loxalate.me · All rights reserved
       </div>
     </div>
   );
 }
-
-function Field({ label, children, hint }) {
+ 
+// ─── ABOUT PAGE ───────────────────────────────────────────────────────────────
+function AboutPage({ onNavigate }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{label}</div>
-      {children}
-      {hint && <div style={{ fontSize: 14, color: "#8AAFC0", marginTop: 4 }}>{hint}</div>}
-    </div>
-  );
-}
-
-function Input({ value, onChange, placeholder, type = "text", unit, min, max }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <input type={type} value={value} min={min} max={max}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={{
-          flex: 1, padding: "9px 12px", fontSize: 14, fontWeight: 500,
-          border: "1.5px solid #D4E7F2", borderRadius: 12, outline: "none",
-          background: "#FFFFFF", color: "#3A7090", fontFamily: "inherit",
-          boxSizing: "border-box"
-        }}
-        onFocus={e => e.currentTarget.style.borderColor = "#3A7090"}
-        onBlur={e => e.currentTarget.style.borderColor = "#D4E7F2"}
-      />
-      {unit && <span style={{ fontSize: 14, color: "#8AAFC0", whiteSpace: "nowrap" }}>{unit}</span>}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-
-// ─── ALCHEMY PAGE ─────────────────────────────────────────────────────────────
-// Clinically-backed low oxalate recipes sourced from:
-// - National Kidney Foundation (kidney.org)
-// - NIDDK (niddk.nih.gov)
-// - Urology Care Foundation Cookbook
-// - Journal of Renal Nutrition (Borghi et al.)
-// - Jill Harris RD, Kidney Stone Diet (kidneystonediet.com)
-// - Melanie Betz MS RD, The Kidney Dietitian (thekidneydietitian.org)
-
-const ALCHEMY_RECIPES = [
-  // ── BREAKFAST ──────────────────────────────────────────────────────────────
-  {
-    id: "r1",
-    title: "Calcium-Paired Scrambled Eggs",
-    category: "Breakfast",
-    tag: "Doctor Recommended",
-    tagColor: "#7AAFD4",
-    source: "National Kidney Foundation",
-    sourceUrl: "https://www.kidney.org",
-    totalOxalate: 3,
-    prepTime: "10 min",
-    servings: 1,
-    whyItWorks: "Pairing dairy calcium with your meal binds oxalate in the gut before it reaches the kidneys — a strategy backed by a landmark Borghi et al. clinical trial showing 49% fewer stones.",
-    ingredients: [
-      { name: "Eggs", amount: "3 large", oxalate: 0 },
-      { name: "Whole milk", amount: "2 tbsp", oxalate: 0 },
-      { name: "Cheddar cheese", amount: "1 oz", oxalate: 0 },
-      { name: "Butter", amount: "1 tbsp", oxalate: 0 },
-      { name: "White toast", amount: "2 slices", oxalate: 2 },
-      { name: "Lemon water (8 oz)", amount: "1 glass", oxalate: 1 },
-    ],
-    steps: [
-      "Whisk eggs with milk and a pinch of salt.",
-      "Melt butter in a non-stick pan over medium-low heat.",
-      "Pour in egg mixture and stir slowly until just set — remove from heat slightly underdone.",
-      "Top with cheddar, serve with white toast.",
-      "Drink lemon water alongside — citrate in lemon helps prevent stone formation.",
-    ],
-    tips: "The milk + cheese provides ~300mg calcium which binds oxalate in your gut. Always pair calcium with meals, not supplements.",
-  },
-  {
-    id: "r2",
-    title: "Kefir Banana Smoothie",
-    category: "Breakfast",
-    tag: "Kidney Dietitian Approved",
-    tagColor: "#3A7090",
-    source: "Jill Harris RD — Kidney Stone Diet",
-    sourceUrl: "https://kidneystonediet.com",
-    totalOxalate: 6,
-    prepTime: "5 min",
-    servings: 1,
-    whyItWorks: "Kefir is lactose-free drinkable yogurt — a calcium powerhouse recommended by nephrologists for patients who struggle with dairy. Banana is naturally low oxalate and high in potassium which inhibits stone formation.",
-    ingredients: [
-      { name: "Plain kefir", amount: "1 cup", oxalate: 0 },
-      { name: "Banana (ripe)", amount: "1 medium", oxalate: 5 },
-      { name: "Honeydew melon", amount: "½ cup", oxalate: 1 },
-      { name: "Ice cubes", amount: "4–5 cubes", oxalate: 0 },
-    ],
-    steps: [
-      "Add kefir to blender first.",
-      "Add banana (frozen works great for creamier texture), honeydew, and ice.",
-      "Blend on high for 30 seconds.",
-      "Drink immediately — kefir's calcium counts toward your daily 1,000mg goal.",
-    ],
-    tips: "Nephrologist Dr. Fred Coe recommends 1,000–1,200mg calcium daily from food, spread across meals. This smoothie delivers ~300mg in one go.",
-  },
-  {
-    id: "r3",
-    title: "Cauliflower & Egg White Omelet",
-    category: "Breakfast",
-    tag: "Urology Foundation",
-    tagColor: "#7AAFD4",
-    source: "Urology Care Foundation Cookbook",
-    sourceUrl: "https://www.urologyhealth.org",
-    totalOxalate: 5,
-    prepTime: "12 min",
-    servings: 1,
-    whyItWorks: "Cauliflower is one of the best low-oxalate vegetables — just 2mg per cup. The Urology Care Foundation specifically calls it out as a spinach replacement. Egg whites add protein without any oxalate.",
-    ingredients: [
-      { name: "Egg whites", amount: "4 large", oxalate: 0 },
-      { name: "Cauliflower florets (chopped fine)", amount: "½ cup", oxalate: 1 },
-      { name: "Red bell pepper", amount: "¼ cup", oxalate: 1 },
-      { name: "Mushrooms (sliced)", amount: "¼ cup", oxalate: 1 },
-      { name: "Mozzarella cheese", amount: "1 oz", oxalate: 0 },
-      { name: "Olive oil", amount: "1 tsp", oxalate: 0 },
-      { name: "Fresh herbs (parsley, chives)", amount: "1 tbsp", oxalate: 1 },
-    ],
-    steps: [
-      "Sauté cauliflower, bell pepper, and mushrooms in olive oil over medium heat for 4–5 min until soft.",
-      "Whisk egg whites with a pinch of salt.",
-      "Push vegetables to the side, pour in egg whites.",
-      "When edges set, add mozzarella and vegetables on one half.",
-      "Fold omelet in half, slide onto plate, top with fresh herbs.",
-    ],
-    tips: "Bok choy and cauliflower are the two best spinach substitutes per the Urology Foundation — both under 3mg oxalate per cup cooked.",
-  },
-
-  // ── LUNCH ──────────────────────────────────────────────────────────────────
-  {
-    id: "r4",
-    title: "Salmon & Bok Choy Rice Bowl",
-    category: "Lunch",
-    tag: "Doctor Recommended",
-    tagColor: "#7AAFD4",
-    source: "Urology Care Foundation Cookbook",
-    sourceUrl: "https://www.urologyhealth.org",
-    totalOxalate: 9,
-    prepTime: "20 min",
-    servings: 2,
-    whyItWorks: "The Urology Foundation cookbook specifically recommends bok choy as a kidney-stone-safe green, calling it 'great substitute for high-oxalate spinach.' Salmon provides omega-3s with zero oxalate.",
-    ingredients: [
-      { name: "Salmon fillets", amount: "2 × 5 oz", oxalate: 0 },
-      { name: "Bok choy (chopped)", amount: "2 cups", oxalate: 4 },
-      { name: "White jasmine rice (cooked)", amount: "1 cup", oxalate: 4 },
-      { name: "Garlic (minced)", amount: "2 cloves", oxalate: 0 },
-      { name: "Low-sodium chicken broth", amount: "¼ cup", oxalate: 0 },
-      { name: "Olive oil", amount: "1 tbsp", oxalate: 0 },
-      { name: "Lemon juice", amount: "1 tbsp", oxalate: 1 },
-      { name: "Seasoning blend (no-salt)", amount: "1 tsp", oxalate: 0 },
-    ],
-    steps: [
-      "Brush salmon with olive oil and seasoning blend.",
-      "Heat pan over medium-high, cook salmon 4 min per side. Set aside.",
-      "In same pan, add garlic, bok choy, and broth. Stir-fry 3–5 min until leaves are soft but still have crunch.",
-      "Plate rice, top with bok choy, then salmon.",
-      "Squeeze lemon juice over everything before serving.",
-    ],
-    tips: "Low-sodium is key — NIDDK notes that excess sodium causes your kidneys to release calcium into urine, raising stone risk. Target under 2,300mg sodium daily.",
-  },
-  {
-    id: "r5",
-    title: "Cauliflower Rice Stir-Fry with Chicken",
-    category: "Lunch",
-    tag: "Kidney Dietitian Approved",
-    tagColor: "#3A7090",
-    source: "Melanie Betz MS RD — The Kidney Dietitian",
-    sourceUrl: "https://www.thekidneydietitian.org",
-    totalOxalate: 8,
-    prepTime: "18 min",
-    servings: 2,
-    whyItWorks: "Cauliflower rice is called out by kidney RDs as an ideal grain substitute — high fiber, low oxalate, filling. The Urology Foundation notes 'broccoli rice is an interesting twist' — same concept applies here.",
-    ingredients: [
-      { name: "Cauliflower (riced)", amount: "2 cups", oxalate: 4 },
-      { name: "Chicken breast (diced)", amount: "6 oz", oxalate: 0 },
-      { name: "Eggs", amount: "2 large", oxalate: 0 },
-      { name: "Red bell pepper (diced)", amount: "½ cup", oxalate: 2 },
-      { name: "Zucchini (diced)", amount: "½ cup", oxalate: 1 },
-      { name: "Garlic", amount: "2 cloves", oxalate: 0 },
-      { name: "Low-sodium soy sauce", amount: "1 tbsp", oxalate: 1 },
-      { name: "Sesame oil", amount: "1 tsp", oxalate: 0 },
-      { name: "Scallions", amount: "2 tbsp", oxalate: 0 },
-    ],
-    steps: [
-      "Cook diced chicken in a hot wok with a splash of oil until golden. Remove and set aside.",
-      "Add garlic, bell pepper, and zucchini — stir-fry 3 min.",
-      "Push veggies to the side, scramble eggs in the open space.",
-      "Add cauliflower rice, chicken back in, soy sauce and sesame oil.",
-      "Toss everything together on high heat for 2–3 min.",
-      "Top with scallions and serve immediately.",
-    ],
-    tips: "Use low-sodium soy sauce — kidney stone RDs consistently flag sodium as a bigger driver of stones than oxalate for most patients.",
-  },
-  {
-    id: "r6",
-    title: "Black-Eyed Pea & Chicken Soup",
-    category: "Lunch",
-    tag: "Urology Foundation",
-    tagColor: "#7AAFD4",
-    source: "Urology Care Foundation Cookbook",
-    sourceUrl: "https://www.urologyhealth.org",
-    totalOxalate: 14,
-    prepTime: "30 min",
-    servings: 4,
-    whyItWorks: "The Urology Foundation specifically recommends black-eyed peas as 'a low-oxalate bean, great to use' for kidney stone prevention. Most beans are high oxalate — black-eyed peas are the rare exception.",
-    ingredients: [
-      { name: "Black-eyed peas (canned, rinsed)", amount: "1 can (15 oz)", oxalate: 8 },
-      { name: "Chicken breast (cubed)", amount: "8 oz", oxalate: 0 },
-      { name: "Low-sodium chicken broth", amount: "4 cups", oxalate: 0 },
-      { name: "Celery (diced)", amount: "2 stalks", oxalate: 2 },
-      { name: "Carrots (diced)", amount: "½ cup", oxalate: 2 },
-      { name: "Onion (diced)", amount: "½ cup", oxalate: 1 },
-      { name: "Garlic", amount: "3 cloves", oxalate: 0 },
-      { name: "Bay leaf", amount: "1 leaf", oxalate: 0 },
-      { name: "Fresh parsley", amount: "2 tbsp", oxalate: 1 },
-    ],
-    steps: [
-      "Sauté onion, celery, carrots, and garlic in a large pot with olive oil for 5 min.",
-      "Add chicken cubes, cook 3–4 min until no longer pink.",
-      "Pour in broth and black-eyed peas. Add bay leaf.",
-      "Simmer on medium-low for 20 min.",
-      "Remove bay leaf, top with fresh parsley and serve.",
-      "Pair with a glass of milk or yogurt on the side for calcium binding.",
-    ],
-    tips: "Serve with 8oz milk or calcium-fortified beverage — pairing calcium with your meal is the #1 most evidence-backed strategy per the National Kidney Foundation.",
-  },
-
-  // ── DINNER ─────────────────────────────────────────────────────────────────
-  {
-    id: "r7",
-    title: "Low-Oxalate Meatballs with White Pasta",
-    category: "Dinner",
-    tag: "Kidney Stone Diet RD",
-    tagColor: "#7AAFD4",
-    source: "Jill Harris RD — Kidney Stone Diet",
-    sourceUrl: "https://kidneystonediet.com",
-    totalOxalate: 11,
-    prepTime: "35 min",
-    servings: 4,
-    whyItWorks: "Jill Harris RD notes this dish is 'very low oxalate, yet satisfying and filling.' Ground beef has zero oxalate. White pasta is dramatically lower than whole wheat. Parmesan adds both flavor and calcium.",
-    ingredients: [
-      { name: "Ground beef (85/15)", amount: "1 lb", oxalate: 0 },
-      { name: "Egg", amount: "1 large", oxalate: 0 },
-      { name: "Breadcrumbs (white)", amount: "¼ cup", oxalate: 1 },
-      { name: "Parmesan (grated)", amount: "3 tbsp", oxalate: 0 },
-      { name: "Garlic (minced)", amount: "2 cloves", oxalate: 0 },
-      { name: "White pasta (cooked)", amount: "2 cups", oxalate: 10 },
-      { name: "Olive oil", amount: "1 tbsp", oxalate: 0 },
-      { name: "Low-sodium chicken broth", amount: "¼ cup", oxalate: 0 },
-      { name: "Fresh basil", amount: "4 leaves", oxalate: 0 },
-    ],
-    steps: [
-      "Preheat oven to 400°F.",
-      "Mix ground beef, egg, breadcrumbs, parmesan, garlic, and a pinch of salt. Form into 12 balls.",
-      "Place on a lined baking sheet, bake 18–20 min until cooked through.",
-      "Cook pasta per package directions — white pasta only.",
-      "Toss pasta with olive oil, broth, and a little parmesan.",
-      "Serve meatballs over pasta, top with fresh basil and extra parmesan.",
-    ],
-    tips: "Feta cheese is a great swap for parmesan — Jill Harris suggests it for a 'nice Greek flair' while keeping calcium high. Skip tomato sauce — it adds ~14mg oxalate per serving.",
-  },
-  {
-    id: "r8",
-    title: "Three-Cheese White Lasagna",
-    category: "Dinner",
-    tag: "Urology Foundation",
-    tagColor: "#7AAFD4",
-    source: "Urology Care Foundation Cookbook",
-    sourceUrl: "https://www.urologyhealth.org",
-    totalOxalate: 16,
-    prepTime: "55 min",
-    servings: 6,
-    whyItWorks: "The Urology Foundation cookbook features this exact concept — white sauce lasagna eliminates tomato (14mg oxalate per ½ cup) while three cheeses deliver heavy calcium. A crowd-pleasing stone-prevention meal.",
-    ingredients: [
-      { name: "Lasagna noodles (white)", amount: "9 sheets", oxalate: 10 },
-      { name: "Ricotta cheese", amount: "15 oz", oxalate: 0 },
-      { name: "Mozzarella (shredded)", amount: "2 cups", oxalate: 0 },
-      { name: "Parmesan (grated)", amount: "½ cup", oxalate: 0 },
-      { name: "Eggs", amount: "2 large", oxalate: 0 },
-      { name: "Butter", amount: "3 tbsp", oxalate: 0 },
-      { name: "White flour", amount: "3 tbsp", oxalate: 1 },
-      { name: "Whole milk", amount: "2 cups", oxalate: 2 },
-      { name: "Garlic", amount: "2 cloves", oxalate: 0 },
-      { name: "Zucchini (thin sliced)", amount: "1 medium", oxalate: 3 },
-    ],
-    steps: [
-      "Preheat oven to 375°F. Cook lasagna noodles, drain.",
-      "Make white sauce: melt butter, whisk in flour, slowly add milk, stir until thickened. Add garlic, salt, half the parmesan.",
-      "Mix ricotta, eggs, and a pinch of nutmeg in a bowl.",
-      "Layer: white sauce → noodles → ricotta mix → zucchini → mozzarella. Repeat twice.",
-      "Top layer: noodles → white sauce → mozzarella → remaining parmesan.",
-      "Cover with foil, bake 35 min. Uncover, bake 10 more min until golden.",
-      "Rest 10 min before cutting.",
-    ],
-    tips: "This delivers ~400mg calcium per serving from the three cheeses — hitting a third of your daily 1,200mg target in one meal.",
-  },
-  {
-    id: "r9",
-    title: "Persian Herb Chicken (Joojeh Style)",
-    category: "Dinner",
-    tag: "Low Oxalate Living",
-    tagColor: "#3A7090",
-    source: "Low Oxalate Living Community",
-    sourceUrl: "https://loxalate.me",
-    totalOxalate: 7,
-    prepTime: "25 min + 1hr marinate",
-    servings: 2,
-    whyItWorks: "Inspired by local Pasadena Persian restaurants. Saffron, yogurt, and lemon marinade with zero oxalate. Paired with basmati white rice — a naturally low-oxalate grain — and plain yogurt for calcium binding.",
-    ingredients: [
-      { name: "Chicken breast", amount: "2 × 6 oz", oxalate: 0 },
-      { name: "Plain yogurt", amount: "3 tbsp", oxalate: 0 },
-      { name: "Lemon juice", amount: "2 tbsp", oxalate: 2 },
-      { name: "Saffron (pinch, bloomed in 1 tbsp hot water)", amount: "pinch", oxalate: 0 },
-      { name: "Garlic (minced)", amount: "2 cloves", oxalate: 0 },
-      { name: "Olive oil", amount: "1 tbsp", oxalate: 0 },
-      { name: "Basmati white rice (cooked)", amount: "1 cup", oxalate: 4 },
-      { name: "Butter pat", amount: "½ tbsp", oxalate: 0 },
-      { name: "Grilled tomato", amount: "1 small", oxalate: 3 },
-    ],
-    steps: [
-      "Mix yogurt, lemon juice, saffron water, garlic, olive oil, and salt. Add chicken and marinate at least 1 hour (overnight is better).",
-      "Grill or broil chicken 6–7 min per side until charred and cooked through.",
-      "Serve over saffron-tinted basmati rice with a butter pat on top.",
-      "Add grilled tomato on the side.",
-      "Serve with extra yogurt as a sauce — adds calcium to the meal.",
-    ],
-    tips: "The yogurt marinade serves double duty: it tenderizes the chicken AND provides calcium. NIDDK specifically recommends yogurt as a calcium source to pair with meals.",
-  },
-  {
-    id: "r10",
-    title: "Jerk Chicken & Plantain Rice Bowl",
-    category: "Dinner",
-    tag: "Low Oxalate Living",
-    tagColor: "#3A7090",
-    source: "Low Oxalate Living Community",
-    sourceUrl: "https://loxalate.me",
-    totalOxalate: 11,
-    prepTime: "30 min",
-    servings: 2,
-    whyItWorks: "Caribbean-inspired, celebrating the diversity of Pasadena. Jerk seasoning is a dry rub — no high-oxalate sauces. Ripe plantain has ~4mg oxalate per serving, making it a safe tropical carb alongside white rice.",
-    ingredients: [
-      { name: "Chicken thighs (bone-in)", amount: "2 large", oxalate: 0 },
-      { name: "Jerk dry rub (allspice, thyme, garlic powder, cayenne, brown sugar)", amount: "1 tbsp", oxalate: 1 },
-      { name: "White rice (cooked)", amount: "1 cup", oxalate: 4 },
-      { name: "Ripe plantain (sliced)", amount: "½ medium", oxalate: 4 },
-      { name: "Cabbage slaw (shredded)", amount: "½ cup", oxalate: 2 },
-      { name: "Lime juice", amount: "1 tbsp", oxalate: 1 },
-      { name: "Butter", amount: "½ tbsp", oxalate: 0 },
-    ],
-    steps: [
-      "Coat chicken thighs with jerk dry rub. Let sit 30 min or overnight.",
-      "Grill chicken over medium-high heat 8–10 min per side until cooked through and skin is crispy.",
-      "Fry plantain slices in butter 2 min per side until golden and soft.",
-      "Toss cabbage slaw with lime juice and a pinch of salt.",
-      "Plate white rice, top with chicken, plantain on the side, slaw on top.",
-    ],
-    tips: "Pair with a glass of whole milk or calcium-fortified coconut milk — the lime and spices can be mildly acidic, so calcium binding helps here.",
-  },
-
-  // ── SNACKS & SIDES ─────────────────────────────────────────────────────────
-  {
-    id: "r11",
-    title: "Cauliflower Mash (Potato Substitute)",
-    category: "Side",
-    tag: "Kidney Stone Diet RD",
-    tagColor: "#7AAFD4",
-    source: "Jill Harris RD — Kidney Stone Diet",
-    sourceUrl: "https://kidneystonediet.com",
-    totalOxalate: 4,
-    prepTime: "15 min",
-    servings: 2,
-    whyItWorks: "Jill Harris RD created this specifically because 'patients are constantly telling me that they miss mashed potatoes.' A baked potato has 97mg oxalate — cauliflower mash has just 2mg per cup.",
-    ingredients: [
-      { name: "Cauliflower head (florets)", amount: "1 medium", oxalate: 4 },
-      { name: "Roasted garlic", amount: "3 cloves", oxalate: 0 },
-      { name: "Low-sodium vegetable stock", amount: "¼ cup", oxalate: 0 },
-      { name: "Butter", amount: "2 tbsp", oxalate: 0 },
-      { name: "Parmesan (grated)", amount: "2 tbsp", oxalate: 0 },
-    ],
-    steps: [
-      "Steam cauliflower florets until very tender, about 10–12 min.",
-      "Drain thoroughly — removing excess water is key to fluffy texture.",
-      "Add to food processor with roasted garlic, butter, stock, and parmesan.",
-      "Blend until smooth and fluffy. Season with salt to taste.",
-      "Top with a drizzle of olive oil and fresh chives.",
-    ],
-    tips: "The Urology Foundation also adds cannellini beans for extra protein and fiber — just note beans add ~5mg oxalate per ¼ cup.",
-  },
-  {
-    id: "r12",
-    title: "Yogurt & Melon Snack Bowl",
-    category: "Snack",
-    tag: "NKF Approved",
-    tagColor: "#7AAFD4",
-    source: "National Kidney Foundation",
-    sourceUrl: "https://www.kidney.org",
-    totalOxalate: 5,
-    prepTime: "5 min",
-    servings: 1,
-    whyItWorks: "The NKF recommends 3 servings of dairy daily to hit 1,000–1,200mg calcium. Cantaloupe and honeydew are among the lowest-oxalate fruits (~2mg per cup) and are high in potassium which inhibits stone formation.",
-    ingredients: [
-      { name: "Plain Greek yogurt", amount: "¾ cup", oxalate: 0 },
-      { name: "Cantaloupe (cubed)", amount: "½ cup", oxalate: 2 },
-      { name: "Honeydew (cubed)", amount: "½ cup", oxalate: 3 },
-      { name: "Honey drizzle", amount: "1 tsp", oxalate: 0 },
-    ],
-    steps: [
-      "Spoon yogurt into a bowl.",
-      "Top with cantaloupe and honeydew cubes.",
-      "Drizzle with honey.",
-      "Eat immediately — this counts as one of your three daily calcium servings.",
-    ],
-    tips: "This delivers ~200mg calcium. NKF recommends spreading calcium across all three meals rather than getting it all at once for maximum oxalate binding.",
-  },
-];
-
-const ALCHEMY_CATEGORIES = ["All", "Breakfast", "Lunch", "Dinner", "Side", "Snack"];
-
-function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedRecipe, setSelectedRecipe]     = useState(null);
-  const [savedRecipes, setSavedRecipes]         = useState({});
-  const [loadingSaved, setLoadingSaved]         = useState(true);
-  const [loggedRecipes, setLoggedRecipes]       = useState({});
-
-  function addRecipeToLog(recipe) {
-    addToLog({
-      dish: recipe.title,
-      restaurantName: recipe.source,
-      total: recipe.totalOxalate,
-    });
-    // Flash confirmation for 2s
-    setLoggedRecipes(prev => ({ ...prev, [recipe.id]: true }));
-    setTimeout(() => setLoggedRecipes(prev => ({ ...prev, [recipe.id]: false })), 2000);
-  }
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await window.storage.get("lo-saved-recipes-v1", false);
-        if (r?.value) setSavedRecipes(JSON.parse(r.value));
-      } catch (_) {}
-      setLoadingSaved(false);
-    })();
-  }, []);
-
-  async function toggleSave(recipeId) {
-    const updated = { ...savedRecipes, [recipeId]: !savedRecipes[recipeId] };
-    if (!updated[recipeId]) delete updated[recipeId];
-    setSavedRecipes(updated);
-    try { await window.storage.set("lo-saved-recipes-v1", JSON.stringify(updated), false); }
-    catch (_) {}
-  }
-  // ── Builder state ─────────────────────────────────────────────────────────
-  const [showBuilder, setShowBuilder]               = useState(false);
-  const [builderName, setBuilderName]               = useState("");
-  const [builderCategory, setBuilderCategory]       = useState("Dinner");
-  const [builderServings, setBuilderServings]       = useState(2);
-  const [builderSteps, setBuilderSteps]             = useState([""]);
-  const [builderTip, setBuilderTip]                 = useState("");
-  const [builderError, setBuilderError]             = useState("");
-  const [builderSaved, setBuilderSaved]             = useState(false);
-  const [myRecipes, setMyRecipes]                   = useState([]);
-  const [selectedMyRecipe, setSelectedMyRecipe]     = useState(null);
-  const [builderIngInput, setBuilderIngInput]       = useState("");
-  const [builderIngredients, setBuilderIngredients] = useState([
-    { name: "", amount: "", oxalate: "" }
-  ]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const m = await window.storage.get("lo-my-recipes-v1", false);
-        if (m?.value) setMyRecipes(JSON.parse(m.value));
-      } catch (_) {}
-    })();
-  }, []);
-
-  const INGREDIENT_SUGGESTIONS = [
-    "Chicken breast","Salmon","Beef (ground)","Lamb","Shrimp","Eggs","Turkey breast","Cod",
-    "White rice","White pasta","Cauliflower","Zucchini","Cucumber","Romaine lettuce","Bok choy",
-    "Mushrooms","Avocado","Banana","Cantaloupe","Apple (peeled)","Garlic","Onion","Red bell pepper",
-    "Butter","Olive oil","Parmesan","Mozzarella","Cheddar","Yogurt (plain)","Milk","Lemon juice",
-    "Low-sodium soy sauce","Ginger","Scallions","Basmati rice","Corn tortilla","White bread",
-    "Asparagus","Yellow squash","Celery","Carrots",
-  ];
-
-  function addIngRow() { setBuilderIngredients(p => [...p, { name: "", amount: "", oxalate: "" }]); }
-  function removeIngRow(i) { setBuilderIngredients(p => p.filter((_, idx) => idx !== i)); }
-  function updateIng(i, field, val) {
-    setBuilderIngredients(p => p.map((ing, idx) => idx !== i ? ing : {
-      ...ing,
-      [field]: field === "oxalate" ? val.replace(/[^0-9]/g,"") : val.slice(0,120)
-    }));
-  }
-  function addStep() { setBuilderSteps(p => [...p, ""]); }
-  function removeStep(i) { setBuilderSteps(p => p.filter((_,idx) => idx !== i)); }
-  function updateStep(i, val) { setBuilderSteps(p => p.map((s,idx) => idx === i ? val.slice(0,300) : s)); }
-
-  const builderTotal = builderIngredients.reduce((sum, i) => sum + (parseInt(i.oxalate)||0), 0);
-
-  function builderOxColor(mg) {
-    if (mg <= 8)  return "#7AAFD4";
-    if (mg <= 15) return "#7AAFD4";
-    if (mg <= 25) return "#F5C518";
-    return "#E05540";
-  }
-
-  const rlSave = { ts: [] };
-  function checkBuildRateLimit() {
-    const now = Date.now();
-    rlSave.ts = rlSave.ts.filter(t => now - t < 60000);
-    if (rlSave.ts.length >= 5) return false;
-    rlSave.ts.push(now); return true;
-  }
-
-  async function saveMyRecipe() {
-    setBuilderError("");
-    const cleanName = builderName.trim().slice(0,80);
-    const validIngs = builderIngredients.filter(i => i.name.trim());
-    const validSteps = builderSteps.filter(s => s.trim());
-    if (!cleanName)          { setBuilderError("Give your recipe a name."); return; }
-    if (!validIngs.length)   { setBuilderError("Add at least one ingredient."); return; }
-    if (!validSteps.length)  { setBuilderError("Add at least one step."); return; }
-    if (!checkBuildRateLimit()) { setBuilderError("⏱ Slow down — max 5 saves per minute."); return; }
-
-    const newRecipe = {
-      id: "my_" + Date.now(),
-      title: cleanName,
-      category: builderCategory,
-      servings: builderServings,
-      totalOxalate: builderTotal,
-      tag: "My Recipe",
-      tagColor: "#8AAFC0",
-      source: "Your Kitchen",
-      prepTime: "Your timing",
-      ingredients: validIngs.map(i => ({
-        name: i.name.trim().slice(0,80),
-        amount: i.amount.trim().slice(0,40),
-        oxalate: parseInt(i.oxalate)||0
-      })),
-      steps: validSteps,
-      tips: builderTip.trim().slice(0,300) || "Your personal note goes here.",
-      whyItWorks: "Your own creation — track the total oxalate and adjust to hit your daily goal.",
-      createdAt: new Date().toISOString(),
-    };
-
-    const updated = [newRecipe, ...myRecipes];
-    setMyRecipes(updated);
-    try { await window.storage.set("lo-my-recipes-v1", JSON.stringify(updated), false); } catch(_){}
-
-    setBuilderSaved(true);
-    setTimeout(() => {
-      setBuilderSaved(false); setShowBuilder(false);
-      setBuilderName(""); setBuilderTip(""); setBuilderSteps([""]); setBuilderError("");
-      setBuilderIngredients([{ name:"", amount:"", oxalate:"" }]);
-    }, 1800);
-  }
-
-  async function deleteMyRecipe(id) {
-    const updated = myRecipes.filter(r => r.id !== id);
-    setMyRecipes(updated);
-    try { await window.storage.set("lo-my-recipes-v1", JSON.stringify(updated), false); } catch(_){}
-    setSelectedMyRecipe(null);
-  }
-
-  const filtered = selectedCategory === "All"
-    ? ALCHEMY_RECIPES
-    : ALCHEMY_RECIPES.filter(r => r.category === selectedCategory);
-
-  function oxColor(mg) {
-    if (mg <= 8)  return "#7AAFD4";
-    if (mg <= 15) return "#7AAFD4";
-    if (mg <= 25) return "#F5C518";
-    return "#E05540";
-  }
-
-  return (
-    <div style={{ background: "#FDE8E0", minHeight: "100vh" }}>
-
-      {/* ── Hero ── */}
-      <div style={{
-        background: "#3A7090",
-        padding: "28px 20px 32px", position: "relative", overflow: "hidden"
-      }}>
-        <div style={{ position: "absolute", top: -40, right: -20, width: 160, height: 160, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.08)" }} />
-        <div style={{ position: "absolute", bottom: -20, left: -20, width: 100, height: 100, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.06)" }} />
+    <div style={{ background: "#F7F9FC", minHeight: "100vh", paddingBottom: 80 }}>
+ 
+      {/* Hero */}
+      <div style={{ background: "#2C5282", padding: "36px 22px 40px", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -60, right: -40, width: 220, height: 220, borderRadius: "50%", background: "rgba(122,175,212,0.12)" }} />
+        <div style={{ position: "absolute", bottom: -30, left: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(122,175,212,0.08)" }} />
         <div style={{ position: "relative", zIndex: 2 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.65)", marginBottom: 6 }}>
-            LOW OXALATE LIVING
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>Our Story</div>
+          <div style={{ fontSize: 30, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.15, marginBottom: 14 }}>
+            A kidney stone.<br />A confusing diet.<br /><span style={{ color: "#7AAFD4" }}>An app.</span>
           </div>
-          <div style={{ fontSize: 32, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.1, marginBottom: 8 }}>
-            Alchemy 🧪
-          </div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", lineHeight: 1.6, maxWidth: 320 }}>
-            Recipes backed by nephrologists, RDs, and kidney stone dietitians — not just food blogs.
-          </div>
-          {/* Source badges */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
-            {[
-              { label: "Nat'l Kidney Foundation", color: "#7AAFD4" },
-              { label: "NIDDK", color: "#7AAFD4" },
-              { label: "Urology Care Foundation", color: "#7AAFD4" },
-              { label: "Kidney Stone Diet RD", color: "#7AAFD4" },
-            ].map(b => (
-              <span key={b.label} style={{
-                fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 999,
-                background: "rgba(255,255,255,0.15)", color: b.color,
-                border: "1px solid rgba(255,255,255,0.2)", whiteSpace: "nowrap"
-              }}>{b.label}</span>
-            ))}
+          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 1.7 }}>
+            LOxalate started with one frustrating question: <em>"I was eating healthy — how did this happen?"</em>
           </div>
         </div>
       </div>
-
-      {/* ── Clinical note ── */}
-      <div style={{ margin: "0 16px", marginTop: -16, position: "relative", zIndex: 10 }}>
-        <div style={{
-          background: "#FFFFFF", borderRadius: 16, padding: "12px 14px",
-          border: "1px solid #8AAFC0", boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
-        }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#7AAFD4", marginBottom: 4 }}>
-            🔬 Evidence-Based Approach
+ 
+      {/* Story */}
+      <div style={{ padding: "28px 22px 0" }}>
+ 
+        {/* Chapter 1 */}
+        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #BFDBFE", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#2C5282", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>😤</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282" }}>The "Healthy" Routine That Wasn't</div>
           </div>
-          <div style={{ fontSize: 14, color: "#8AAFC0", lineHeight: 1.6 }}>
-            80% of kidney stones are calcium-oxalate. The Borghi et al. clinical trial found that pairing <strong>calcium with meals</strong> — not a strict low-oxalate diet — reduced recurrence by 49%. Every recipe here applies this principle.
-          </div>
-        </div>
-      </div>
-
-      {/* ── Category filter ── */}
-      <div style={{ padding: "16px 16px 0", overflowX: "auto" }}>
-        <div style={{ display: "flex", gap: 10, paddingBottom: 4 }}>
-          {ALCHEMY_CATEGORIES.map(cat => (
-            <button key={cat} onClick={() => setSelectedCategory(cat)} style={{
-              padding: "7px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-              border: `1.5px solid ${selectedCategory === cat ? "#7AAFD4" : "#8AAFC0"}`,
-              background: selectedCategory === cat ? "#7AAFD4" : "#FFFFFF",
-              color: selectedCategory === cat ? "#FFFFFF" : "#8AAFC0",
-              cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s"
-            }}>{cat}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Recipe count ── */}
-      <div style={{ padding: "10px 18px 4px", fontSize: 14, color: "#8AAFC0", fontWeight: 600 }}>
-        {filtered.length} recipe{filtered.length !== 1 ? "s" : ""} · tap to open
-      </div>
-
-      {/* ── Recipe cards ── */}
-      <div style={{ padding: "10px 18px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
-        {filtered.map(recipe => {
-          const isSaved = !!savedRecipes[recipe.id];
-          const col = oxColor(recipe.totalOxalate);
-          return (
-            <div key={recipe.id}
-              onClick={() => setSelectedRecipe(recipe)}
-              style={{
-                background: "#FFFFFF", borderRadius: 18,
-                border: "1px solid #8AAFC0",
-                overflow: "hidden", cursor: "pointer",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-                transition: "transform 0.15s, box-shadow 0.15s"
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.1)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)"; }}
-            >
-              {/* Color bar top */}
-              <div style={{ height: 4, background: col }} />
-
-              <div style={{ padding: "14px 14px 12px" }}>
-                {/* Top row */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    {/* Tag */}
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 6 }}>
-                      <span style={{
-                        fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 999,
-                        background: recipe.tagColor + "18", color: recipe.tagColor,
-                        border: `1px solid ${recipe.tagColor}44`, textTransform: "uppercase", letterSpacing: "0.06em"
-                      }}>{recipe.tag}</span>
-                    </div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: "#3A7090", lineHeight: 1.2 }}>
-                      {recipe.title}
-                    </div>
-                  </div>
-                  {/* Oxalate badge */}
-                  <div style={{ textAlign: "center", marginLeft: 12, flexShrink: 0 }}>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: col, lineHeight: 1 }}>{recipe.totalOxalate}</div>
-                    <div style={{ fontSize: 8, color: col, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>mg ox</div>
-                  </div>
-                </div>
-
-                {/* Meta row */}
-                <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
-                  {[
-                    { icon: "⏱", val: recipe.prepTime },
-                    { icon: "👤", val: `${recipe.servings} serving${recipe.servings > 1 ? "s" : ""}` },
-                    { icon: "📚", val: recipe.category },
-                  ].map(m => (
-                    <span key={m.val} style={{ fontSize: 14, color: "#8AAFC0", display: "flex", alignItems: "center", gap: 3 }}>
-                      {m.icon} {m.val}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Source */}
-                <div style={{ fontSize: 11, color: "#7AAFD4", fontWeight: 600 }}>
-                  📖 {recipe.source}
-                </div>
-              </div>
-
-              {/* Bottom: save + log + open */}
-              <div style={{ display: "flex", borderTop: "1px solid #7AAFD4" }}>
-                <button
-                  onClick={e => { e.stopPropagation(); toggleSave(recipe.id); }}
-                  style={{
-                    flex: 1, padding: "10px", border: "none", background: "none",
-                    fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    color: isSaved ? "#7AAFD4" : "#8AAFC0",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5
-                  }}
-                >
-                  {isSaved ? "❤️ Saved" : "🤍 Save"}
-                </button>
-                <div style={{ width: 1, background: "#7AAFD4" }} />
-                <button
-                  onClick={e => { e.stopPropagation(); addRecipeToLog(recipe); }}
-                  style={{
-                    flex: 1, padding: "10px", border: "none",
-                    background: loggedRecipes[recipe.id] ? "#7AAFD4" : "none",
-                    fontSize: 12, fontWeight: 700, cursor: "pointer",
-                    color: loggedRecipes[recipe.id] ? "#3A7090" : "#7AAFD4",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                    transition: "background 0.2s"
-                  }}
-                >
-                  {loggedRecipes[recipe.id] ? "✓ Logged!" : "📋 Log"}
-                </button>
-                <div style={{ width: 1, background: "#7AAFD4" }} />
-                <button style={{
-                  flex: 1, padding: "10px", border: "none", background: "none",
-                  fontSize: 12, fontWeight: 700, color: "#7AAFD4", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 5
-                }}>
-                  View →
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-
-      {/* ────────────────────────────────────────────────────────────────────── */}
-      {/* ── CREATE YOUR OWN RECIPE ── */}
-      <div style={{ padding: "0 18px 12px" }}>
-
-        {/* Section header — sticky */}
-        <div style={{
-          background: "#3A7090",
-          borderRadius: 18, padding: "18px 18px 14px",
-          marginBottom: 12, position: "sticky", top: 70, zIndex: 50, overflow: "hidden"
-        }}>
-          <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)" }} />
-          <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.65)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>
-            LOW OXALATE LIVING
-          </div>
-          <div style={{ fontSize: 19, fontWeight: 900, color: "#FFFFFF", marginBottom: 4 }}>
-            Your Kitchen Lab 🧑‍🍳
-          </div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.5, marginBottom: 14 }}>
-            Build your own low-oxalate recipes. We calculate the total oxalate automatically as you add ingredients.
-          </div>
-          <button
-            onClick={() => setShowBuilder(b => !b)}
-            style={{
-              padding: "10px 20px", borderRadius: 999, border: "2px solid rgba(255,255,255,0.5)",
-              background: showBuilder ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.15)",
-              color: "#FFFFFF", fontSize: 17, fontWeight: 800, cursor: "pointer",
-              backdropFilter: "blur(4px)", transition: "all 0.2s"
-            }}
-          >
-            {showBuilder ? "✕ Close Builder" : "+ New Recipe"}
-          </button>
-        </div>
-
-        {/* ── Recipe Template Builder ── */}
-        {showBuilder && (
-          <div style={{ background: "#FFFFFF", borderRadius: 18, border: "1px solid #D4E7F2", marginBottom: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(44,82,130,0.08)" }}>
-
-            {/* Template header — looks like a recipe card */}
-            <div style={{ background: "#FDE8E0", borderBottom: "1px solid #D4E7F2", padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>New Recipe</div>
-                {/* Recipe name inline — feels like filling in a title */}
-                <input
-                  value={builderName}
-                  onChange={e => { setBuilderName(e.target.value); setBuilderError(""); }}
-                  placeholder="Untitled Recipe..."
-                  maxLength={80}
-                  style={{
-                    fontSize: 20, fontWeight: 900, color: "#3A7090",
-                    border: "none", borderBottom: builderName ? "2px solid #7AAFD4" : "2px dashed #D4E7F2",
-                    outline: "none", background: "transparent", fontFamily: "inherit",
-                    width: "100%", padding: "2px 0"
-                  }}
-                />
-              </div>
-              {/* Live oxalate badge */}
-              <div style={{ textAlign: "center", flexShrink: 0, marginLeft: 12, background: builderOxColor(builderTotal) + "18", borderRadius: 12, padding: "8px 12px", border: `1.5px solid ${builderOxColor(builderTotal)}44` }}>
-                <div style={{ fontSize: 26, fontWeight: 900, color: builderOxColor(builderTotal), lineHeight: 1 }}>{builderTotal}</div>
-                <div style={{ fontSize: 10, color: builderOxColor(builderTotal), fontWeight: 700 }}>mg total</div>
-              </div>
-            </div>
-
-            <div style={{ padding: "16px 18px" }}>
-
-              {/* Meal type + servings — pill selectors */}
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>This is a</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-                  {["Breakfast","Lunch","Dinner","Side","Snack"].map(cat => (
-                    <button key={cat} onClick={() => setBuilderCategory(cat)} style={{
-                      padding: "7px 16px", borderRadius: 999, fontSize: 13, fontWeight: 700,
-                      border: `2px solid ${builderCategory === cat ? "#3A7090" : "#D4E7F2"}`,
-                      background: builderCategory === cat ? "#3A7090" : "#FFFFFF",
-                      color: builderCategory === cat ? "#FFFFFF" : "#8AAFC0",
-                      cursor: "pointer", transition: "all 0.15s"
-                    }}>{cat}</button>
-                  ))}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 13, color: "#8AAFC0", fontWeight: 600 }}>Serves</span>
-                  <button onClick={() => setBuilderServings(s => Math.max(1,s-1))} style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #D4E7F2", background: "#FDE8E0", fontSize: 16, cursor: "pointer", fontWeight: 700, color: "#3A7090", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                  <span style={{ fontSize: 18, fontWeight: 900, color: "#3A7090", minWidth: 22, textAlign: "center" }}>{builderServings}</span>
-                  <button onClick={() => setBuilderServings(s => Math.min(12,s+1))} style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #D4E7F2", background: "#FDE8E0", fontSize: 16, cursor: "pointer", fontWeight: 700, color: "#3A7090", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-                </div>
-              </div>
-
-              {/* Cooking method — tap to select chips */}
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Cooked by</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {[
-                    { label: "🔥 Grilled",    value: "Grilled" },
-                    { label: "🍳 Pan-seared",  value: "Pan-seared" },
-                    { label: "♨️ Steamed",     value: "Steamed" },
-                    { label: "🫕 Simmered",    value: "Simmered" },
-                    { label: "🌡 Roasted",     value: "Roasted" },
-                    { label: "🥗 Raw",         value: "Raw" },
-                    { label: "🍲 Slow cooked", value: "Slow cooked" },
-                    { label: "🥘 Stir-fried",  value: "Stir-fried" },
-                    { label: "🫙 Baked",       value: "Baked" },
-                    { label: "💧 Boiled",      value: "Boiled" },
-                  ].map(m => {
-                    const isSelected = builderSteps[0] === m.value;
-                    return (
-                      <button key={m.value}
-                        onClick={() => setBuilderSteps([m.value, ...builderSteps.slice(1)])}
-                        style={{
-                          padding: "7px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600,
-                          border: `2px solid ${isSelected ? "#3A7090" : "#D4E7F2"}`,
-                          background: isSelected ? "#FDE8E0" : "#FFFFFF",
-                          color: isSelected ? "#3A7090" : "#8AAFC0",
-                          cursor: "pointer", transition: "all 0.15s"
-                        }}
-                      >{m.label}</button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Ingredients — fill-in-the-blank rows */}
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
-                  Ingredients
-                  <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", color: "#C8BEBB", marginLeft: 6 }}>— enter mg or 0 if unsure</span>
-                </div>
-
-                {builderIngredients.map((ing, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, padding: "10px 12px", background: "#FDE8E0", borderRadius: 12, border: "1px solid #D4E7F2" }}>
-                    {/* Number */}
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#3A7090", color: "#FFFFFF", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i+1}</div>
-                    {/* Ingredient name */}
-                    <input
-                      value={ing.name}
-                      onChange={e => updateIng(i, "name", e.target.value)}
-                      placeholder="Ingredient name..."
-                      list={"ing-suggestions-" + i}
-                      style={{ flex: 2, fontSize: 14, fontWeight: 600, border: "none", borderBottom: "1.5px dashed #D4E7F2", outline: "none", background: "transparent", fontFamily: "inherit", color: "#3A7090", padding: "2px 4px" }}
-                      onFocus={e => e.target.style.borderBottomColor = "#7AAFD4"}
-                      onBlur={e => e.target.style.borderBottomColor = "#D4E7F2"}
-                    />
-                    <datalist id={"ing-suggestions-" + i}>
-                      {INGREDIENT_SUGGESTIONS.map(s => <option key={s} value={s} />)}
-                    </datalist>
-                    {/* Amount */}
-                    <input
-                      value={ing.amount}
-                      onChange={e => updateIng(i, "amount", e.target.value)}
-                      placeholder="1 cup"
-                      style={{ width: 64, fontSize: 13, border: "none", borderBottom: "1.5px dashed #D4E7F2", outline: "none", background: "transparent", fontFamily: "inherit", color: "#8AAFC0", textAlign: "center", padding: "2px 4px" }}
-                      onFocus={e => e.target.style.borderBottomColor = "#7AAFD4"}
-                      onBlur={e => e.target.style.borderBottomColor = "#D4E7F2"}
-                    />
-                    {/* mg */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
-                      <input
-                        value={ing.oxalate}
-                        onChange={e => updateIng(i, "oxalate", e.target.value)}
-                        placeholder="0"
-                        type="number" min={0} max={999}
-                        style={{ width: 44, fontSize: 14, fontWeight: 800, border: "none", borderBottom: `1.5px dashed ${ing.oxalate ? builderOxColor(parseInt(ing.oxalate)||0) : "#D4E7F2"}`, outline: "none", background: "transparent", fontFamily: "inherit", color: ing.oxalate ? builderOxColor(parseInt(ing.oxalate)||0) : "#8AAFC0", textAlign: "center", padding: "2px 2px" }}
-                        onFocus={e => e.target.style.borderBottomColor = "#7AAFD4"}
-                        onBlur={e => e.target.style.borderBottomColor = ing.oxalate ? builderOxColor(parseInt(ing.oxalate)||0) : "#D4E7F2"}
-                      />
-                      <span style={{ fontSize: 11, color: "#C8BEBB", fontWeight: 600 }}>mg</span>
-                    </div>
-                    {/* Remove */}
-                    {builderIngredients.length > 1 && (
-                      <button onClick={() => removeIngRow(i)} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "#FDE8E0", color: "#E05540", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>×</button>
-                    )}
-                  </div>
-                ))}
-
-                <button onClick={addIngRow} style={{
-                  width: "100%", padding: "9px", borderRadius: 12,
-                  border: "2px dashed #D4E7F2", background: "transparent",
-                  color: "#7AAFD4", fontSize: 13, fontWeight: 700, cursor: "pointer"
-                }}>+ Add Ingredient</button>
-              </div>
-
-              {/* Notes / tip */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Notes</div>
-                <textarea
-                  value={builderTip}
-                  onChange={e => setBuilderTip(e.target.value)}
-                  placeholder="Any tips, swaps, or things to remember..."
-                  rows={2} maxLength={300}
-                  style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1.5px solid #D4E7F2", borderRadius: 12, outline: "none", fontFamily: "inherit", resize: "vertical", background: "#FDE8E0", boxSizing: "border-box", lineHeight: 1.6 }}
-                  onFocus={e => e.target.style.borderColor = "#7AAFD4"}
-                  onBlur={e => e.target.style.borderColor = "#D4E7F2"}
-                />
-              </div>
-
-              {builderError && (
-                <div style={{ background: "#FDE8E0", border: "1px solid #E05540", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 14, color: "#E05540", fontWeight: 700 }}>
-                  {builderError}
-                </div>
-              )}
-
-              <button onClick={saveMyRecipe} style={{
-                width: "100%", padding: "14px",
-                background: builderSaved ? "#7AAFD4" : "#3A7090",
-                color: "#FFFFFF", border: "none",
-                borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer",
-                transition: "all 0.2s", boxShadow: builderSaved ? "none" : "0 4px 16px rgba(44,82,130,0.25)"
-              }}>
-                {builderSaved ? "✓ Recipe Saved!" : `Save Recipe · ${builderTotal}mg`}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── My Recipes list ── */}
-        {myRecipes.length > 0 && (
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
-              My Recipes ({myRecipes.length})
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {myRecipes.map(recipe => {
-                const col = builderOxColor(recipe.totalOxalate);
-                return (
-                  <div key={recipe.id}
-                    onClick={() => setSelectedMyRecipe(recipe)}
-                    style={{
-                      background: "#FFFFFF", borderRadius: 16,
-                      border: "1px solid #8AAFC0",
-                      padding: "18px", cursor: "pointer",
-                      boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
-                      transition: "transform 0.15s"
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
-                    onMouseLeave={e => e.currentTarget.style.transform = ""}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 17, fontWeight: 800, color: "#3A7090", marginBottom: 4 }}>{recipe.title}</div>
-                        <div style={{ display: "flex", gap: 12, fontSize: 14, color: "#8AAFC0" }}>
-                          <span>🍽 {recipe.category}</span>
-                          <span>👤 {recipe.servings} serving{recipe.servings > 1 ? "s" : ""}</span>
-                          <span>🧪 {recipe.ingredients.length} ingredients</span>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "center", marginLeft: 12, flexShrink: 0 }}>
-                        <div style={{ fontSize: 24, fontWeight: 900, color: col, lineHeight: 1 }}>{recipe.totalOxalate}</div>
-                        <div style={{ fontSize: 8, color: col, fontWeight: 700, textTransform: "uppercase" }}>mg ox</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Sources & Disclaimers Footer ── */}
-      <div style={{ margin: "0 16px 24px", background: "#FFFFFF", borderRadius: 18, border: "1px solid #D4E7F2", overflow: "hidden" }}>
-        {/* Header */}
-        <div style={{ background: "#3A7090", padding: "18px", display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 14 }}>📚</span>
-          <span style={{ fontSize: 12, fontWeight: 800, color: "#FFFFFF", textTransform: "uppercase", letterSpacing: "0.1em" }}>Clinical Sources</span>
-        </div>
-        <div style={{ padding: "18px" }}>
-          <p style={{ fontSize: 14, color: "#8AAFC0", lineHeight: 1.6, marginBottom: 12 }}>
-            All recipes and dietary guidance are grounded in peer-reviewed research and recommendations from registered dietitian nutritionists specializing in kidney stone prevention.
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: 0 }}>
+            In late October 2024, I was on a roll. Cooking for myself every night — spinach, kale, carrots,
+            chicken. Working out after work. All the things you're supposed to do. Then in late November,
+            I learned I had a kidney stone. My doctor's advice? Lay off the red meat and eat more vegetables.
           </p>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: "12px 0 0" }}>
+            I was confused. <strong>That was already my routine.</strong>
+          </p>
+        </div>
+ 
+        {/* Chapter 2 */}
+        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #BFDBFE", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#7AAFD4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>💡</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282" }}>The Oxalate Rabbit Hole</div>
+          </div>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: 0 }}>
+            Like anyone else, I turned to the internet. That's when I discovered <strong>calcium oxalates</strong> —
+            a naturally occurring compound in many foods. The kicker? My entire "healthy" diet was
+            loaded with them. Spinach. Kale. Almonds. Sweet potatoes. The foods I was eating every
+            single day were the exact foods my kidneys couldn't handle.
+          </p>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: "12px 0 0" }}>
+            I went on a low-oxalate diet for a week. The pain stopped. But staying on it was <em>brutal</em> —
+            especially when eating out with friends or family.
+          </p>
+        </div>
+ 
+        {/* Chapter 3 */}
+        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #BFDBFE", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#2C5282", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛠</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#2C5282" }}>Building the Thing I Needed</div>
+          </div>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: 0 }}>
+            The tracking list I was using turned out to be outdated. So I built a small app to validate
+            oxalate content per serving and keep track of what I was cooking. That turned into a
+            restaurant map. The map turned into a community. One iteration at a time, <strong>LOxalate.me</strong> took shape.
+          </p>
+          <p style={{ fontSize: 16, color: "#374151", lineHeight: 1.85, margin: "12px 0 0" }}>
+            The question driving everything: <em>"Wouldn't it be nice to find other people dealing with
+            this — and share what's actually working?"</em>
+          </p>
+        </div>
+ 
+        {/* Mission */}
+        <div style={{ background: "#2C5282", borderRadius: 18, padding: "22px", marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 10 }}>Our Mission</div>
+          <div style={{ fontSize: 18, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.4, marginBottom: 12 }}>
+            Make low-oxalate living less lonely, less confusing, and a lot more doable.
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.7 }}>
+            LOxalate is a community tool built by someone who went through it — not a medical company,
+            not a supplement brand. Just a practical map, a recipe library, and a place to connect
+            with people who get it.
+          </div>
+        </div>
+ 
+        {/* What we are / aren't */}
+        <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "22px", marginBottom: 14, border: "1px solid #BFDBFE", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "#2C5282", marginBottom: 14 }}>What LOxalate Is (and Isn't)</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[
-              { name: "National Kidney Foundation", desc: "Kidney Stone Diet Plan & Prevention", url: "https://www.kidney.org/kidney-topics/kidney-stone-diet-plan-and-prevention" },
-              { name: "NIDDK", desc: "Eating, Diet & Nutrition for Kidney Stones", url: "https://www.niddk.nih.gov/health-information/urologic-diseases/kidney-stones/eating-diet-nutrition" },
-              { name: "Urology Care Foundation", desc: "Fight Kidney Stones with Food Cookbook", url: "https://www.urologyhealth.org/documents/Product-Store/English/Kidney-Stones-Cookbook.pdf" },
-              { name: "Journal of Renal Nutrition", desc: "Whole Diet Approach to Calcium Oxalate Kidney Stone Prevention", url: "https://www.jrnjournal.org/article/S1051-2276(21)00268-5/fulltext" },
-              { name: "Jill Harris RD — Kidney Stone Diet", desc: "Low Oxalate Recipes & Meal Plans", url: "https://kidneystonediet.com/recipes/" },
-              { name: "Melanie Betz MS RD — The Kidney Dietitian", desc: "The Kidney Stone Diet: Evidence-Based Nutrition", url: "https://www.thekidneydietitian.org/kidney-stone-diet/" },
-              { name: "NKF of Hawaii", desc: "How Oxalates Affect Kidney Health", url: "https://kidneyhi.org/blog/how-oxalates-affect-kidney-health-what-you-need-to-know-to-prevent-kidney-stones/" },
-            ].map(source => (
-              <a key={source.name} href={source.url} target="_blank" rel="noreferrer"
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, padding: "9px 12px", background: "#ffffff", borderRadius: 12, border: "1px solid #D4E7F2", textDecoration: "none", transition: "border-color 0.15s" }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = "#7AAFD4"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "#D4E7F2"}
-              >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#3A7090", marginBottom: 2 }}>{source.name}</div>
-                  <div style={{ fontSize: 14, color: "#8AAFC0" }}>{source.desc}</div>
-                </div>
-                <span style={{ fontSize: 11, color: "#7AAFD4", flexShrink: 0, marginTop: 2 }}>↗</span>
-              </a>
+              { icon: "✅", text: "A restaurant finder for low-oxalate dining in Pasadena & beyond" },
+              { icon: "✅", text: "A recipe library backed by nephrologists and registered dietitians" },
+              { icon: "✅", text: "A community for people navigating kidney stones and low-oxalate living" },
+              { icon: "✅", text: "A practical daily tracker for your oxalate intake" },
+              { icon: "❌", text: "A substitute for medical advice — always work with your doctor" },
+              { icon: "❌", text: "A one-size-fits-all solution — oxalate tolerance varies by individual" },
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
+                <span style={{ fontSize: 15, color: "#374151", lineHeight: 1.6 }}>{item.text}</span>
+              </div>
             ))}
           </div>
-          {/* Disclaimer */}
-          <div style={{ marginTop: 14, padding: "10px 12px", background: "#FDE8E0", border: "1px solid #F5C518", borderRadius: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#3A7090", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>⚠️ Medical Disclaimer</div>
-            <p style={{ fontSize: 11, color: "#3A7090", lineHeight: 1.6, margin: 0 }}>
-              Loxalate is a dietary reference tool, not a substitute for medical advice. Oxalate targets vary by individual — always consult your nephrologist or registered dietitian before making significant dietary changes. Information is provided for general educational purposes only.
-            </p>
-          </div>
-          {/* Copyright */}
-          <div style={{ marginTop: 12, textAlign: "center" }}>
-            <img src={LOGO_B64} alt="Loxalate" style={{ height: 22, width: "auto", opacity: 0.5, marginBottom: 4 }} />
-            <div style={{ fontSize: 10, color: "#D4E7F2" }}>© {new Date().getFullYear()} Loxalate · loxalate.me · All rights reserved</div>
-          </div>
+        </div>
+ 
+        {/* CTA */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 4 }}>
+          <button onClick={() => onNavigate("map")} style={{ flex: 1, padding: "14px", background: "#2C5282", color: "#FFFFFF", border: "none", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer" }}>
+            🗺 Explore the Map
+          </button>
+          <button onClick={() => onNavigate("faq")} style={{ flex: 1, padding: "14px", background: "#FFFFFF", color: "#2C5282", border: "2px solid #2C5282", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer" }}>
+            Read the FAQ
+          </button>
         </div>
       </div>
-
-      {/* ── Recipe detail modal ── */}
-      {selectedRecipe && (
-        <div
-          onClick={() => setSelectedRecipe(null)}
-          style={{
-            position: "fixed", inset: 0, zIndex: 1000,
-            background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)",
-            display: "flex", alignItems: "flex-end", justifyContent: "center"
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: "100%", maxWidth: 560,
-              background: "#FFFFFF",
-              borderRadius: "20px 20px 0 0",
-              maxHeight: "92vh",
-              display: "flex", flexDirection: "column",
-              animation: "modalUp 0.3s cubic-bezier(.15,.85,.3,1) forwards",
-              boxShadow: "0 -8px 40px rgba(0,0,0,0.2)"
-            }}
-          >
-            {/* Handle */}
-            <div style={{ padding: "14px 0 0", display: "flex", justifyContent: "center", flexShrink: 0 }}>
-              <div style={{ width: 40, height: 4, background: "#7AAFD4", borderRadius: 2 }} />
-            </div>
-
-            {/* Scrollable content */}
-            <div style={{ overflowY: "auto", padding: "12px 22px 40px" }}>
-              {/* Tag + title */}
-              <span style={{
-                display: "inline-block", fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999,
-                background: selectedRecipe.tagColor + "18", color: selectedRecipe.tagColor,
-                border: `1px solid ${selectedRecipe.tagColor}44`, textTransform: "uppercase",
-                letterSpacing: "0.06em", marginBottom: 8
-              }}>{selectedRecipe.tag}</span>
-              <div style={{ fontSize: 22, fontWeight: 900, color: "#3A7090", lineHeight: 1.2, marginBottom: 6 }}>
-                {selectedRecipe.title}
-              </div>
-
-              {/* Stats row */}
-              <div style={{ display: "flex", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
-                {[
-                  { label: "Total Oxalate", val: `${selectedRecipe.totalOxalate}mg`, color: oxColor(selectedRecipe.totalOxalate) },
-                  { label: "Prep Time", val: selectedRecipe.prepTime, color: "#8AAFC0" },
-                  { label: "Servings", val: selectedRecipe.servings, color: "#8AAFC0" },
-                  { label: "Category", val: selectedRecipe.category, color: "#8AAFC0" },
-                ].map(s => (
-                  <div key={s.label} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: s.color }}>{s.val}</div>
-                    <div style={{ fontSize: 10, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Why it works */}
-              <div style={{
-                background: "#7AAFD4", borderRadius: 14, padding: "12px 14px", marginBottom: 16,
-                border: "1px solid #7AAFD444"
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#7AAFD4", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>
-                  🔬 Why This Works
-                </div>
-                <div style={{ fontSize: 13, color: "#3A7090", lineHeight: 1.6 }}>
-                  {selectedRecipe.whyItWorks}
-                </div>
-              </div>
-
-              {/* Source */}
-              <div style={{ fontSize: 14, color: "#8AAFC0", marginBottom: 16 }}>
-                📖 Source:{" "}
-                <a href={selectedRecipe.sourceUrl} target="_blank" rel="noreferrer"
-                  style={{ color: "#7AAFD4", fontWeight: 700, textDecoration: "none" }}
-                  onClick={e => e.stopPropagation()}
-                >
-                  {selectedRecipe.source}
-                </a>
-              </div>
-
-              {/* Ingredients */}
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
-                Ingredients
-              </div>
-              {selectedRecipe.ingredients.map((ing, i) => {
-                const maxOx = Math.max(...selectedRecipe.ingredients.map(x => x.oxalate), 1);
-                const pct = ing.oxalate === 0 ? 0 : Math.max((ing.oxalate / maxOx) * 100, 5);
-                const c = oxColor(ing.oxalate);
-                return (
-                  <div key={i} style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, color: "#3A7090", fontWeight: 500 }}>{ing.name}</span>
-                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <span style={{ fontSize: 14, color: "#8AAFC0" }}>{ing.amount}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#8AAFC0" : c, minWidth: 36, textAlign: "right" }}>
-                          {ing.oxalate === 0 ? "0mg" : `${ing.oxalate}mg`}
-                        </span>
-                      </div>
-                    </div>
-                    <div style={{ height: 3, background: "#7AAFD4", borderRadius: 2 }}>
-                      {ing.oxalate > 0 && <div style={{ height: "100%", width: `${pct}%`, background: c, borderRadius: 2 }} />}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Steps */}
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", margin: "18px 0 10px" }}>
-                Instructions
-              </div>
-              {selectedRecipe.steps.map((step, i) => (
-                <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: "50%", background: "#7AAFD4",
-                    color: "#FFFFFF", fontSize: 12, fontWeight: 800,
-                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1
-                  }}>{i + 1}</div>
-                  <div style={{ fontSize: 15, color: "#8AAFC0", lineHeight: 1.6, flex: 1 }}>{step}</div>
-                </div>
-              ))}
-
-              {/* Tips */}
-              <div style={{
-                background: "#FDE8E0", borderRadius: 14, padding: "12px 14px",
-                border: "1px solid #F5C518", marginTop: 8
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#3A7090", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>
-                  💡 Dietitian Tip
-                </div>
-                <div style={{ fontSize: 13, color: "#3A7090", lineHeight: 1.6 }}>
-                  {selectedRecipe.tips}
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
-                <button
-                  onClick={() => addRecipeToLog(selectedRecipe)}
-                  style={{
-                    flex: 1, padding: "18px",
-                    background: loggedRecipes[selectedRecipe.id] ? "#7AAFD4" : "#3A7090",
-                    color: loggedRecipes[selectedRecipe.id] ? "#3A7090" : "#FFFFFF",
-                    border: "2px solid #3A7090", borderRadius: 16,
-                    fontSize: 16, fontWeight: 800, cursor: "pointer",
-                    transition: "all 0.2s"
-                  }}
-                >
-                  {loggedRecipes[selectedRecipe.id] ? "✓ Added to Log!" : "📋 Add to Daily Log"}
-                </button>
-                <button
-                  onClick={() => toggleSave(selectedRecipe.id)}
-                  style={{
-                    flex: 1, padding: "18px",
-                    background: savedRecipes[selectedRecipe.id] ? "#7AAFD4" : "none",
-                    color: savedRecipes[selectedRecipe.id] ? "#3A7090" : "#8AAFC0",
-                    border: "2px solid #7AAFD4", borderRadius: 16,
-                    fontSize: 16, fontWeight: 800, cursor: "pointer",
-                    transition: "all 0.2s"
-                  }}
-                >
-                  {savedRecipes[selectedRecipe.id] ? "❤️ Saved" : "🤍 Save"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── My Recipe detail modal ── */}
+ 
       <PageFooter onNavigate={onNavigate} />
-
-      {selectedMyRecipe && (
-        <div
-          onClick={() => setSelectedMyRecipe(null)}
-          style={{ position: "fixed", inset: 0, zIndex: 1001, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 560, background: "#FFFFFF", borderRadius: "20px 20px 0 0", maxHeight: "92vh", display: "flex", flexDirection: "column", animation: "modalUp 0.3s cubic-bezier(.15,.85,.3,1) forwards", boxShadow: "0 -8px 40px rgba(0,0,0,0.2)" }}
-          >
-            <div style={{ padding: "14px 0 0", display: "flex", justifyContent: "center", flexShrink: 0 }}>
-              <div style={{ width: 40, height: 4, background: "#7AAFD4", borderRadius: 2 }} />
-            </div>
-            <div style={{ overflowY: "auto", padding: "12px 22px 40px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: "#FDE8E0", color: "#8AAFC0", display: "inline-block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>My Recipe</div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: "#3A7090", lineHeight: 1.2 }}>{selectedMyRecipe.title}</div>
-                </div>
-                <div style={{ textAlign: "center", marginLeft: 12, flexShrink: 0 }}>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: builderOxColor(selectedMyRecipe.totalOxalate), lineHeight: 1 }}>{selectedMyRecipe.totalOxalate}</div>
-                  <div style={{ fontSize: 10, color: builderOxColor(selectedMyRecipe.totalOxalate), fontWeight: 700, textTransform: "uppercase" }}>mg oxalate</div>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
-                {[
-                  { label: "Category", val: selectedMyRecipe.category },
-                  { label: "Servings", val: selectedMyRecipe.servings },
-                  { label: "Ingredients", val: selectedMyRecipe.ingredients.length },
-                ].map(s => (
-                  <div key={s.label} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: "#3A7090" }}>{s.val}</div>
-                    <div style={{ fontSize: 10, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Ingredients</div>
-              {selectedMyRecipe.ingredients.map((ing, i) => {
-                const maxOx = Math.max(...selectedMyRecipe.ingredients.map(x => x.oxalate), 1);
-                const pct = ing.oxalate === 0 ? 0 : Math.max((ing.oxalate / maxOx) * 100, 5);
-                const c = builderOxColor(ing.oxalate);
-                return (
-                  <div key={i} style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, color: "#3A7090", fontWeight: 500 }}>{ing.name}</span>
-                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                        <span style={{ fontSize: 14, color: "#8AAFC0" }}>{ing.amount}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#8AAFC0" : c, minWidth: 36, textAlign: "right" }}>{ing.oxalate === 0 ? "0mg" : `${ing.oxalate}mg`}</span>
-                      </div>
-                    </div>
-                    <div style={{ height: 3, background: "#7AAFD4", borderRadius: 2 }}>
-                      {ing.oxalate > 0 && <div style={{ height: "100%", width: `${pct}%`, background: c, borderRadius: 2 }} />}
-                    </div>
-                  </div>
-                );
-              })}
-
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", margin: "16px 0 10px" }}>Instructions</div>
-              {selectedMyRecipe.steps.map((step, i) => (
-                <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#7AAFD4", color: "#FFFFFF", fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                  <div style={{ fontSize: 15, color: "#8AAFC0", lineHeight: 1.6, flex: 1 }}>{step}</div>
-                </div>
-              ))}
-
-              {selectedMyRecipe.tips && (
-                <div style={{ background: "#FDE8E0", borderRadius: 14, padding: "12px 14px", border: "1px solid #F5C518", marginTop: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "#3A7090", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>💡 My Note</div>
-                  <div style={{ fontSize: 13, color: "#3A7090", lineHeight: 1.6 }}>{selectedMyRecipe.tips}</div>
-                </div>
-              )}
-
-              <button
-                onClick={() => deleteMyRecipe(selectedMyRecipe.id)}
-                style={{ width: "100%", marginTop: 18, padding: "13px", background: "#FDE8E0", color: "#E05540", border: "2px solid #E05540", borderRadius: 16, fontSize: 17, fontWeight: 800, cursor: "pointer" }}
-              >
-                🗑 Delete This Recipe
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ProfilePage({ trackedDishes = [], removeFromLog = () => {}, clearLog = () => {} }) {
-  const [profile, setProfile] = useState(PROFILE_DEFAULTS);
-  const [loading, setLoading] = useState(true);
-  const [editOpen, setEditOpen]   = useState(false);
-  const [saved, setSaved]         = useState(false);
-  const [saveError, setSaveError] = useState("");
-
-  useEffect(() => { loadProfile(); }, []);
-
-  async function loadProfile() {
-    setLoading(true);
-    try {
-      const r = await window.storage.get("lo-profile-v1", false);
-      if (r?.value) setProfile({ ...PROFILE_DEFAULTS, ...JSON.parse(r.value) });
-    } catch (_) {}
-    setLoading(false);
-  }
-
-  async function saveProfile() {
-    setSaveError("");
-    if (profile.name && profile.name.length < 2) { setSaveError("Name must be at least 2 characters."); return; }
-    if (profile.weight && (isNaN(profile.weight) || profile.weight < 50 || profile.weight > 700)) { setSaveError("Please enter a valid weight."); return; }
-    try {
-      await window.storage.set("lo-profile-v1", JSON.stringify(profile), false);
-      setSaved(true);
-      setTimeout(() => { setSaved(false); setEditOpen(false); }, 1800);
-    } catch { setSaveError("Could not save. Please try again."); }
-  }
-
-  function set(key, val) { setProfile(p => ({ ...p, [key]: val })); setSaved(false); }
-
-  const completionFields = [
-    profile.name, profile.sex, profile.height_ft, profile.weight,
-    profile.oxalate_goal, profile.location,
-    profile.medical_conditions.length > 0 ? "x" : null,
-    profile.eating_patterns.length > 0 ? "x" : null,
+ 
+// ─── FAQ PAGE ─────────────────────────────────────────────────────────────────
+function FAQPage({ onNavigate }) {
+  const FAQS = [
+    {
+      category: "About Oxalates",
+      questions: [
+        {
+          q: "How do oxalates form kidney stones?",
+          a: "Oxalates are naturally occurring compounds found in plants and produced by your body. When you consume high amounts, your kidneys filter the excess oxalate into urine. If there's too much oxalate and not enough fluid — or if calcium levels are off — oxalate binds with calcium to form crystals. Over time, those crystals clump into a kidney stone. About 80% of kidney stones are calcium oxalate stones.",
+        },
+        {
+          q: "How much oxalate is too much?",
+          a: "Most nephrologists recommend staying under 100mg of oxalate per day for people prone to calcium oxalate stones. A stricter target is under 50mg/day. For context: one cup of cooked spinach contains ~755mg — over 7x the daily limit in a single serving. LOxalate uses 50–100mg/day as the default target, but ask your doctor what's right for your specific situation.",
+        },
+        {
+          q: "Is there such a thing as too little oxalate?",
+          a: "Oxalate is not an essential nutrient — your body makes its own supply regardless of diet. There's no clinical deficiency from eating a low-oxalate diet. Many healthy, nutrient-rich foods are naturally low in oxalate: eggs, fish, chicken, cauliflower, zucchini, bananas, and most dairy. You won't be missing out nutritionally.",
+        },
+        {
+          q: "Should I completely change my diet to low-oxalate?",
+          a: "Not necessarily — and this is a common misconception. Research from the National Kidney Foundation shows that pairing calcium-rich foods with higher-oxalate foods at the same meal is often more effective than strict avoidance. Calcium binds to oxalate in your gut before it reaches your kidneys, reducing absorption. The goal is balance, not elimination. Work with a registered dietitian who specializes in kidney stones for a personalized plan.",
+        },
+      ],
+    },
+    {
+      category: "About Kidney Stones",
+      questions: [
+        {
+          q: "How do I know when a kidney stone has passed?",
+          a: "You'll usually know — the intense, cramping pain (typically in your back, side, or lower abdomen) will stop once the stone passes. You may feel it exit during urination. Your doctor may ask you to strain your urine to catch the stone for analysis. If pain stops suddenly or you develop fever/chills, contact your doctor immediately as those can indicate a blockage or infection.",
+        },
+        {
+          q: "How long does it take a kidney stone to pass?",
+          a: "It depends on the size. Stones under 4mm usually pass on their own within 1–2 weeks. Stones 4–6mm may take 2–6 weeks. Stones larger than 6mm often require medical intervention (like lithotripsy or ureteroscopy). Drinking at least 2.5–3 liters of water daily significantly speeds up the process and reduces risk of recurrence.",
+        },
+        {
+          q: "How do you manage a kidney stone?",
+          a: "The main strategies: drink a lot of water (2.5–3L daily), reduce sodium (sodium causes your kidneys to excrete more calcium), moderate animal protein, pair calcium with oxalate-rich foods at meals, and follow your doctor's specific guidance. Pain medication, alpha-blockers to relax the ureter, and in some cases procedures like lithotripsy are medical options for larger stones.",
+        },
+      ],
+    },
+    {
+      category: "About LOxalate",
+      questions: [
+        {
+          q: "Why is this app useful?",
+          a: "Most oxalate resources are either clinical PDFs that are hard to read, or food lists with no restaurant context. LOxalate bridges the gap — it maps real local restaurants with per-dish oxalate estimates so you can eat out without guessing, find clinically-backed recipes you can actually cook, and connect with others going through the same thing. It's the tool the founder wished existed when they were diagnosed.",
+        },
+        {
+          q: "Are the oxalate values accurate?",
+          a: "We use values consistent with the Harvard Oxalate List and data from the National Kidney Foundation, NIDDK, and the Urology Care Foundation. Restaurant dish estimates are calculated from individual ingredient values and should be treated as estimates — cooking methods, portion sizes, and ingredient substitutions can vary. Always verify with a dietitian for medical decisions.",
+        },
+        {
+          q: "Is LOxalate a medical app?",
+          a: "No. LOxalate is a dietary reference and community tool. It is not a substitute for medical advice, diagnosis, or treatment. Every person's oxalate tolerance is different and depends on factors like kidney function, urine chemistry, and stone type. Always consult your nephrologist or a registered dietitian nutritionist (RDN) who specializes in kidney stone prevention.",
+        },
+        {
+          q: "Can I suggest a restaurant or dish?",
+          a: "Yes! Head to the Community page and use the 'Request to Add' button. Tell us the restaurant name, address, dish name, and ingredients and we'll review it. Community suggestions are how LOxalate grows beyond Pasadena.",
+        },
+        {
+          q: "Is the app free?",
+          a: "Yes. LOxalate is completely free. No ads, no subscriptions, no data selling. It was built to be useful, not to monetize a health condition.",
+        },
+      ],
+    },
   ];
-  const completion = Math.round((completionFields.filter(Boolean).length / completionFields.length) * 100);
-
-  const totalToday  = trackedDishes.reduce((s, d) => s + d.total, 0);
-  const logColor    = totalToday < 50 ? "#7AAFD4" : totalToday < 100 ? "#F5C518" : "#E05540";
-  const logStatus   = totalToday < 50 ? "Excellent" : totalToday < 100 ? "On Track" : "Over Target";
-  const logPct      = Math.min((totalToday / 100) * 100, 100);
-
-  if (loading) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-      <div style={{ textAlign: "center", color: "#8AAFC0" }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🌿</div>
-        <div style={{ fontSize: 14 }}>Loading...</div>
-      </div>
-    </div>
-  );
-
+ 
   return (
-    <div style={{ background: "#FDE8E0", minHeight: "100vh", paddingBottom: 80 }}>
-
-      {/* ── HERO ── */}
-      <div style={{ background: "#3A7090", padding: "28px 20px 28px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -40, right: -40, width: 200, height: 200, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.06)" }} />
-        <div style={{ position: "absolute", bottom: -20, left: -20, width: 120, height: 120, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.05)" }} />
-
-        {/* Identity row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, position: "relative", zIndex: 2 }}>
-          <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#7AAFD4", border: "3px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 900, color: "#FFFFFF", flexShrink: 0 }}>
-            {profile.name ? profile.name.charAt(0).toUpperCase() : "🌿"}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 24, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.2 }}>
-              {profile.name || "Your Name"}
-            </div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 3, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {profile.location && <span>📍 {profile.location}</span>}
-              {profile.sex && <span>· {profile.sex}</span>}
-              {profile.oxalate_goal && <span>· {profile.oxalate_goal === "strict" ? "Strict <50mg" : profile.oxalate_goal === "moderate" ? "Moderate 50–100mg" : "Custom Goal"}</span>}
-            </div>
-          </div>
-          {/* Edit button */}
-          <button onClick={() => setEditOpen(true)} style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 12, padding: "7px 14px", color: "#FFFFFF", fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
-            Edit
-          </button>
-        </div>
-
-        {/* Quick stat pills */}
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", position: "relative", zIndex: 2, marginBottom: 16 }}>
-          {[
-            profile.height_ft ? { label: "Height", val: `${profile.height_ft}'${profile.height_in || 0}"` } : null,
-            profile.weight    ? { label: "Weight", val: `${profile.weight} lbs` } : null,
-            profile.meals_per_day ? { label: "Meals/day", val: profile.meals_per_day } : null,
-            profile.spicy     ? { label: "Spice", val: profile.spicy } : null,
-          ].filter(Boolean).map(({ label, val }) => (
-            <div key={label} style={{ background: "rgba(255,255,255,0.1)", borderRadius: 12, padding: "5px 10px", border: "1px solid rgba(255,255,255,0.12)" }}>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "#FFFFFF" }}>{val}</div>
-            </div>
-          ))}
-          {profile.medical_conditions?.length > 0 && (
-            <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 12, padding: "5px 10px", border: "1px solid rgba(255,255,255,0.12)" }}>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Conditions</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>{profile.medical_conditions.slice(0, 2).join(", ")}{profile.medical_conditions.length > 2 ? " +" + (profile.medical_conditions.length - 2) : ""}</div>
-            </div>
-          )}
-        </div>
-
-        {/* Profile completion */}
-        <div style={{ position: "relative", zIndex: 2 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Profile {completion}% complete</span>
-            {completion < 100 && <span onClick={() => setEditOpen(true)} style={{ fontSize: 11, color: "#7AAFD4", fontWeight: 700, cursor: "pointer" }}>Complete →</span>}
-          </div>
-          <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: 999, height: 4 }}>
-            <div style={{ height: "100%", width: completion + "%", background: "#7AAFD4", borderRadius: 999, transition: "width 0.5s ease" }} />
-          </div>
+    <div style={{ background: "#F7F9FC", minHeight: "100vh", paddingBottom: 80 }}>
+ 
+      {/* Hero */}
+      <div style={{ background: "#2C5282", padding: "32px 22px 36px" }}>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>Frequently Asked Questions</div>
+        <div style={{ fontSize: 30, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.2, marginBottom: 10 }}>
+          Questions about oxalates,<br />kidney stones, and LOxalate.
         </div>
       </div>
-
-      {/* ── CARDS GRID ── */}
-      <div style={{ padding: "16px 16px 0" }}>
-
-        {/* Today's Log card */}
-        <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 16, padding: "16px", marginBottom: 12, boxShadow: "0 4px 16px rgba(44,82,130,0.08)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 800, color: "#3A7090", textTransform: "uppercase", letterSpacing: "0.08em" }}>📋 Today's Log</span>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontSize: 28, fontWeight: 900, color: logColor, lineHeight: 1 }}>{totalToday}</span>
-              <span style={{ fontSize: 14, color: "#8AAFC0" }}>mg</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: logColor, marginLeft: 4 }}>{logStatus}</span>
+ 
+      <div style={{ padding: "22px 18px 0" }}>
+        {FAQS.map((section, si) => (
+          <div key={si} style={{ marginBottom: 24 }}>
+            {/* Category header */}
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#7AAFD4", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12, paddingLeft: 4 }}>
+              {section.category}
             </div>
-          </div>
-          <div style={{ background: "rgba(44,82,130,0.08)", borderRadius: 999, height: 6, overflow: "hidden", marginBottom: 6 }}>
-            <div style={{ height: "100%", width: logPct + "%", background: logColor, borderRadius: 999, transition: "width 0.4s ease" }} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: trackedDishes.length ? 10 : 0 }}>
-            <span style={{ fontSize: 10, color: "#8AAFC0" }}>0mg</span>
-            <span style={{ fontSize: 10, color: "#8AAFC0" }}>Target: 50–100mg/day</span>
-            <span style={{ fontSize: 10, color: "#8AAFC0" }}>100mg</span>
-          </div>
-          {trackedDishes.length === 0 ? (
-            <div style={{ fontSize: 14, color: "#8AAFC0", textAlign: "center", padding: "8px 0" }}>Nothing logged yet — add dishes from the Map 🗺</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              {trackedDishes.map(entry => {
-                const c = entry.total <= 10 ? "#7AAFD4" : entry.total <= 25 ? "#F5C518" : "#E05540";
+ 
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {section.questions.map((item, qi) => {
                 return (
-                  <div key={entry.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#ffffff", borderRadius: 12, padding: "7px 10px", borderLeft: `3px solid ${c}` }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#3A7090", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{entry.dish}</div>
-                      <div style={{ fontSize: 14, color: "#8AAFC0" }}>{entry.restaurantName} · {entry.time}</div>
+                  <div key={qi} style={{ background: "#FFFFFF", borderRadius: 16, border: "1.5px solid #BFDBFE", overflow: "hidden", boxShadow: "0 2px 8px rgba(44,82,130,0.05)" }}>
+                    <div style={{ padding: "18px 20px 6px" }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b", lineHeight: 1.4 }}>{item.q}</div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                      <span style={{ fontSize: 17, fontWeight: 800, color: c }}>{entry.total}mg</span>
-                      <button onClick={() => removeFromLog(entry.id)} style={{ background: "none", border: "none", color: "#D4E7F2", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2 }}
-                        onMouseEnter={e => e.currentTarget.style.color = "#E05540"}
-                        onMouseLeave={e => e.currentTarget.style.color = "#D4E7F2"}
-                      >×</button>
+                    <div style={{ padding: "10px 20px 20px" }}>
+                      <p style={{ fontSize: 15, color: "#374151", lineHeight: 1.85, margin: 0 }}>{item.a}</p>
                     </div>
                   </div>
                 );
               })}
-              <button onClick={clearLog} style={{ marginTop: 4, width: "100%", padding: "6px", background: "none", border: "1px solid #E05540", borderRadius: 10, color: "#E05540", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                Reset Day
-              </button>
             </div>
-          )}
+          </div>
+        ))}
+ 
+        {/* Still have questions */}
+        <div style={{ background: "#2C5282", borderRadius: 18, padding: "22px", marginBottom: 8 }}>
+          <div style={{ fontSize: 16, fontWeight: 900, color: "#FFFFFF", marginBottom: 8 }}>Still have questions?</div>
+          <div style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", lineHeight: 1.7, marginBottom: 16 }}>
+            Ask the community — someone's probably been through the same thing.
+          </div>
+          <button onClick={() => onNavigate("community")} style={{ padding: "11px 22px", background: "#7AAFD4", color: "#FFFFFF", border: "none", borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+            Go to Community →
+          </button>
         </div>
-
-        {/* Two-col stat cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-
-          {/* Dietary snapshot */}
-          <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🥗 Diet</div>
-            {profile.eating_patterns?.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {profile.eating_patterns.slice(0, 3).map(p => (
-                  <span key={p} style={{ fontSize: 11, color: "#3A7090", background: "#D4E7F2", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>
-                    {p.replace(/_/g, " ")}
-                  </span>
-                ))}
-                {profile.eating_patterns.length > 3 && <span style={{ fontSize: 14, color: "#8AAFC0" }}>+{profile.eating_patterns.length - 3} more</span>}
-              </div>
-            ) : (
-              <span onClick={() => setEditOpen(true)} style={{ fontSize: 12, color: "#7AAFD4", cursor: "pointer", fontWeight: 600 }}>Set up →</span>
-            )}
-          </div>
-
-          {/* Cuisines */}
-          <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🍜 Cuisines</div>
-            {profile.cuisines?.length > 0 ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                {profile.cuisines.slice(0, 4).map(c => (
-                  <span key={c} style={{ fontSize: 11, color: "#3A7090", background: "#D4E7F2", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>{c}</span>
-                ))}
-                {profile.cuisines.length > 4 && <span style={{ fontSize: 14, color: "#8AAFC0" }}>+{profile.cuisines.length - 4}</span>}
-              </div>
-            ) : (
-              <span onClick={() => setEditOpen(true)} style={{ fontSize: 12, color: "#7AAFD4", cursor: "pointer", fontWeight: 600 }}>Set up →</span>
-            )}
-          </div>
-
-          {/* Avoid */}
-          <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🚫 Avoid</div>
-            {profile.disliked_ingredients?.length > 0 ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                {profile.disliked_ingredients.slice(0, 4).map(i => (
-                  <span key={i} style={{ fontSize: 11, color: "#E05540", background: "#FDE8E0", borderRadius: 4, padding: "2px 7px", fontWeight: 600 }}>{i}</span>
-                ))}
-                {profile.disliked_ingredients.length > 4 && <span style={{ fontSize: 14, color: "#8AAFC0" }}>+{profile.disliked_ingredients.length - 4}</span>}
-              </div>
-            ) : (
-              <span onClick={() => setEditOpen(true)} style={{ fontSize: 12, color: "#7AAFD4", cursor: "pointer", fontWeight: 600 }}>Set up →</span>
-            )}
-          </div>
-
-          {/* Health Apps */}
-          <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 18, padding: "18px", boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>🔗 Health Apps</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {[{id:"apple",logo:"🍎"},{id:"google",logo:"🟢"},{id:"samsung",logo:"🔵"}].map(app => {
-                const connected = profile.health_connected?.includes(app.id);
-                return (
-                  <button key={app.id} onClick={() => { openHealthApp(app.id); if (!connected) set("health_connected", [...(profile.health_connected||[]), app.id]); }}
-                    style={{ flex: 1, padding: "6px 4px", borderRadius: 12, border: `1.5px solid ${connected ? "#7AAFD4" : "#D4E7F2"}`, background: connected ? "#D4E7F2" : "#FFFFFF", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                    <span style={{ fontSize: 16 }}>{app.logo}</span>
-                    <span style={{ fontSize: 8, fontWeight: 700, color: connected ? "#3A7090" : "#8AAFC0" }}>{connected ? "✓" : "Link"}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
+      </div>
+ 
+      <PageFooter onNavigate={onNavigate} />
+    </div>
+  );
+}
+ 
+ 
+function CommunityPage({ onNavigate = () => {} }) {
+  const POST_TYPES = [
+    { id: "recipe",  label: "🥗 Recipe",         color: "#7AAFD4", bg: "#7AAFD4", border: "#93C5FD" },
+    { id: "event",   label: "📅 Event",           color: "#7AAFD4", bg: "#7AAFD4", border: "#7AAFD4" },
+    { id: "weekly",  label: "📊 Weekly Check-in", color: "#7AAFD4", bg: "#7AAFD4", border: "#7AAFD4" },
+  ];
+ 
+  const [posts, setPosts]           = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [posting, setPosting]       = useState(false);
+  const [showForm, setShowForm]     = useState(false);
+  const [postType, setPostType]     = useState("recipe");
+  const [name, setName]             = useState("");
+  const [content, setContent]       = useState("");
+  const [oxTotal, setOxTotal]       = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [likedIds, setLikedIds]     = useState({});
+  const [formError, setFormError]   = useState("");
+  const [rateLimitMsg, setRateLimitMsg] = useState("");
+  const [showRequest, setShowRequest]   = useState(false);
+  const [reqName, setReqName]           = useState("");
+  const [reqAddress, setReqAddress]     = useState("");
+  const [reqDish, setReqDish]           = useState("");
+  const [reqIngredients, setReqIngredients] = useState("");
+  const [reqPhoto, setReqPhoto]         = useState(null);
+  const [reqPhotoPreview, setReqPhotoPreview] = useState(null);
+  const [reqSubmitted, setReqSubmitted] = useState(false);
+  const [reqError, setReqError]         = useState("");
+ 
+  // ── Hide/show floating buttons on scroll (X-style) ─────────────────────────
+  const [buttonsVisible, setButtonsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollContainerRef = useRef(null);
+ 
+  useEffect(() => {
+    // Listen on window scroll since community renders in the main scroll area
+    function handleScroll() {
+      const current = window.scrollY;
+      if (current < 10) {
+        setButtonsVisible(true);
+      } else if (current > lastScrollY.current + 6) {
+        // Scrolling DOWN — hide
+        setButtonsVisible(false);
+      } else if (current < lastScrollY.current - 6) {
+        // Scrolling UP — show
+        setButtonsVisible(true);
+      }
+      lastScrollY.current = current;
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+ 
+  useEffect(() => { loadPosts(); }, []);
+ 
+  async function submitRequest() {
+    setReqError("");
+    if (reqName.trim().length < 2)  { setReqError("Please enter a restaurant name."); return; }
+    if (reqDish.trim().length < 2)  { setReqError("Please enter a dish name."); return; }
+    // Save request as a special post type
+    const req = {
+      id: Date.now(),
+      type: "request",
+      name: "Community Request",
+      content: `🍽 ${sanitizeText(reqName.trim())} — ${sanitizeText(reqDish.trim())}${reqAddress ? `\n📍 ${sanitizeText(reqAddress.trim())}` : ""}${reqIngredients ? `\n🥗 Ingredients: ${sanitizeContent(reqIngredients.trim())}` : ""}`,
+      ts: new Date().toISOString(),
+      likes: 0,
+    };
+    const updated = [req, ...posts];
+    setPosts(updated);
+    await savePosts(updated);
+    setReqSubmitted(true);
+    setTimeout(() => {
+      setShowRequest(false); setReqSubmitted(false);
+      setReqName(""); setReqAddress(""); setReqDish("");
+      setReqIngredients(""); setReqPhoto(null); setReqPhotoPreview(null);
+    }, 2200);
+  }
+ 
+  async function loadPosts() {
+    setLoading(true);
+    try {
+      const result = await window.storage.get("lo-community-v1", true);
+      if (result && result.value) setPosts(JSON.parse(result.value));
+    } catch (_) { setPosts([]); }
+    setLoading(false);
+  }
+ 
+  async function savePosts(list) {
+    try { await window.storage.set("lo-community-v1", JSON.stringify(list), true); }
+    catch (e) { console.error("Storage error", e); }
+  }
+ 
+  async function submitPost() {
+    setFormError("");
+ 
+    // ── Rate limit check ──
+    if (!checkRateLimit("post")) {
+      setFormError("⏱ Slow down — max 3 posts per minute. Try again shortly.");
+      return;
+    }
+ 
+    // ── Sanitize inputs ──
+    const cleanName    = sanitizeName(name);
+    const cleanContent = sanitizeContent(content);
+    const cleanOx      = sanitizeOxalate(oxTotal);
+ 
+    // ── Validate after sanitisation ──
+    if (cleanName.length < 2)   { setFormError("Name must be at least 2 characters."); return; }
+    if (cleanContent.length < 10) { setFormError("Post must be at least 10 characters."); return; }
+    if (postType === "weekly" && oxTotal && cleanOx === null) {
+      setFormError("Weekly total must be a positive number."); return;
+    }
+ 
+    setPosting(true);
+    const post = {
+      id: Date.now(),
+      type: postType,
+      name: cleanName,
+      content: cleanContent,
+      oxTotal: postType === "weekly" ? cleanOx : null,
+      ts: new Date().toISOString(),
+      likes: 0,
+    };
+    const updated = [post, ...posts];
+    setPosts(updated);
+    await savePosts(updated);
+    setContent(""); setOxTotal(""); setShowForm(false); setPosting(false);
+  }
+ 
+  async function toggleLike(postId) {
+    if (likedIds[postId]) return;
+ 
+    // ── Rate limit check ──
+    if (!checkRateLimit("like")) {
+      setRateLimitMsg("❤️ Slow down on the likes!");
+      setTimeout(() => setRateLimitMsg(""), 2500);
+      return;
+    }
+ 
+    setLikedIds(p => ({ ...p, [postId]: true }));
+    const updated = posts.map(p => p.id === postId ? { ...p, likes: (p.likes || 0) + 1 } : p);
+    setPosts(updated);
+    await savePosts(updated);
+  }
+ 
+  function timeAgo(iso) {
+    const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  }
+ 
+  const filtered = filterType === "all" ? posts : posts.filter(p => p.type === filterType);
+ 
+  return (
+    <div style={{ padding: "0 0 20px" }}>
+ 
+      {/* ── Hero banner ── */}
+      <div style={{
+        background: "#2C5282",
+        padding: "24px 20px 28px", color: "white", position: "relative", overflow: "hidden"
+      }}>
+        <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
+        <div style={{ position: "absolute", bottom: -20, left: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7, marginBottom: 6 }}>LOW OXALATE LIVING</div>
+        <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.2, marginBottom: 8 }}>Welcome to the<br />Community 🌿</div>
+        <div style={{ fontSize: 12, opacity: 0.8, lineHeight: 1.6, maxWidth: 320 }}>
+          Share recipes, plan low-oxalate picnics, and celebrate your weekly wins with people who get it.
         </div>
-
-        {/* Medical conditions — full width if set */}
-        {profile.medical_conditions?.length > 0 && (
-          <div style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 18, padding: "18px", marginBottom: 12, boxShadow: "0 4px 16px rgba(44,82,130,0.06)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>🏥 Medical Conditions</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-              {profile.medical_conditions.map(c => (
-                <span key={c} style={{ fontSize: 12, color: "#3A7090", background: "#D4E7F2", borderRadius: 6, padding: "3px 9px", fontWeight: 600, border: "1px solid #D4E7F2" }}>{c}</span>
-              ))}
+        <div style={{ display: "flex", gap: 20, marginTop: 18 }}>
+          {[["🥗","Recipes"],["📅","Events"],["📊","Check-ins"]].map(([e, l]) => (
+            <div key={l} style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22 }}>{e}</div>
+              <div style={{ fontSize: 10, opacity: 0.75, marginTop: 3, fontWeight: 600 }}>{l}</div>
             </div>
-          </div>
-        )}
-
-        {/* Empty state CTA */}
-        {completion < 40 && (
-          <div style={{ background: "#FFFFFF", border: "2px dashed #7AAFD4", borderRadius: 18, padding: "20px", textAlign: "center", marginBottom: 12 }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>🌿</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#3A7090", marginBottom: 6 }}>Complete your profile</div>
-            <div style={{ fontSize: 14, color: "#8AAFC0", marginBottom: 14, lineHeight: 1.5 }}>Add your goals, conditions, and dietary preferences so Loxalate can personalize your experience.</div>
-            <button onClick={() => setEditOpen(true)} style={{ padding: "10px 24px", background: "#3A7090", color: "#FFFFFF", border: "none", borderRadius: 14, fontSize: 17, fontWeight: 800, cursor: "pointer" }}>
-              Set Up Profile
+          ))}
+        </div>
+      </div>
+ 
+      <div style={{ padding: "16px 16px 0" }}>
+ 
+ 
+ 
+        {/* ── Request to Add Form ── */}
+        {showRequest && (
+          <div style={{ background: "#FFFFFF", borderRadius: 18, border: "1px solid #BFDBFE", padding: "20px", marginBottom: 14, boxShadow: "0 4px 20px rgba(44,82,130,0.1)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#2C5282" }}>📍 Request a Restaurant</div>
+              <button onClick={() => { setShowRequest(false); setReqError(""); }} style={{ background: "none", border: "none", color: "#6E7187", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6, marginBottom: 16, background: "#F7F9FC", borderRadius: 10, padding: "10px 12px" }}>
+              Know a restaurant with great low-oxalate options? Tell us and we'll research and add it to the map.
+            </div>
+ 
+            {/* Restaurant Name */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Restaurant Name *</div>
+              <input value={reqName} onChange={e => { setReqName(e.target.value); setReqError(""); }}
+                placeholder="e.g. Café de Leche"
+                maxLength={80}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                onFocus={e => e.target.style.borderColor = "#7AAFD4"}
+                onBlur={e => e.target.style.borderColor = "#BFDBFE"}
+              />
+            </div>
+ 
+            {/* Address */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Address</div>
+              <input value={reqAddress} onChange={e => setReqAddress(e.target.value)}
+                placeholder="e.g. 123 Colorado Blvd, Pasadena CA"
+                maxLength={120}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                onFocus={e => e.target.style.borderColor = "#7AAFD4"}
+                onBlur={e => e.target.style.borderColor = "#BFDBFE"}
+              />
+            </div>
+ 
+            {/* Dish */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Dish / Menu Item *</div>
+              <input value={reqDish} onChange={e => { setReqDish(e.target.value); setReqError(""); }}
+                placeholder="e.g. Grilled Salmon Bowl"
+                maxLength={80}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                onFocus={e => e.target.style.borderColor = "#7AAFD4"}
+                onBlur={e => e.target.style.borderColor = "#BFDBFE"}
+              />
+            </div>
+ 
+            {/* Ingredients */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Ingredients (optional)</div>
+              <textarea value={reqIngredients} onChange={e => setReqIngredients(e.target.value)}
+                placeholder="List the main ingredients you know about..."
+                maxLength={500}
+                rows={3}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 15, border: "1.5px solid #BFDBFE", borderRadius: 10, outline: "none", fontFamily: "inherit", boxSizing: "border-box", resize: "vertical", lineHeight: 1.6 }}
+                onFocus={e => e.target.style.borderColor = "#7AAFD4"}
+                onBlur={e => e.target.style.borderColor = "#BFDBFE"}
+              />
+            </div>
+ 
+            {/* Photo upload */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7187", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.08em" }}>Menu Photo (optional)</div>
+              <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "14px", border: "2px dashed #BFDBFE", borderRadius: 12, cursor: "pointer", background: "#F7F9FC", transition: "border-color 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "#7AAFD4"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "#BFDBFE"}
+              >
+                <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                  onChange={e => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    setReqPhoto(file);
+                    const reader = new FileReader();
+                    reader.onload = ev => setReqPhotoPreview(ev.target.result);
+                    reader.readAsDataURL(file);
+                  }}
+                />
+                <span style={{ fontSize: 22 }}>📸</span>
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: "#2C5282" }}>Take a photo or upload</div>
+                  <div style={{ fontSize: 14, color: "#6E7187" }}>Snap the menu to help us identify ingredients</div>
+                </div>
+              </label>
+              {reqPhotoPreview && (
+                <div style={{ marginTop: 10, position: "relative", display: "inline-block" }}>
+                  <img src={reqPhotoPreview} alt="menu preview" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 10, border: "1px solid #BFDBFE" }} />
+                  <button onClick={() => { setReqPhoto(null); setReqPhotoPreview(null); }}
+                    style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.5)", border: "none", color: "white", width: 24, height: 24, borderRadius: "50%", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                </div>
+              )}
+              <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 6 }}>
+                📝 Full AI ingredient scanning coming soon. For now your photo helps our team manually review.
+              </div>
+            </div>
+ 
+            {reqError && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 12, color: "#dc2626", fontWeight: 600 }}>{reqError}</div>}
+ 
+            <button onClick={submitRequest} style={{
+              width: "100%", padding: "14px", background: reqSubmitted ? "#7AAFD4" : "#2C5282",
+              color: "#FFFFFF", border: "none", borderRadius: 12,
+              fontSize: 16, fontWeight: 800, cursor: "pointer", transition: "all 0.2s"
+            }}>
+              {reqSubmitted ? "✓ Request Submitted! Thank you!" : "Submit Request"}
             </button>
           </div>
         )}
-
-      </div>
-
-      {/* ── EDIT PROFILE MODAL ── */}
-      {editOpen && (
-        <div onClick={() => setEditOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, background: "#FFFFFF", borderRadius: "20px 20px 0 0", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 -8px 40px rgba(0,0,0,0.2)" }}>
-
-            {/* Handle + header */}
-            <div style={{ padding: "14px 20px 0", flexShrink: 0 }}>
-              <div style={{ width: 40, height: 4, background: "#D4E7F2", borderRadius: 2, margin: "0 auto 14px" }} />
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, borderBottom: "1px solid #D4E7F2", paddingBottom: 14 }}>
-                <div style={{ fontSize: 17, fontWeight: 900, color: "#3A7090" }}>Edit Profile</div>
-                <button onClick={() => setEditOpen(false)} style={{ background: "#FFFFFF", border: "1px solid #D4E7F2", borderRadius: 12, width: 30, height: 30, cursor: "pointer", fontSize: 16, color: "#8AAFC0", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
-              </div>
+ 
+        {/* ── Composer form ── */}
+        {showForm && (
+          <div style={{ background: "#FFFFFF", borderRadius: 18, border: "1px solid #e5e7eb", padding: "18px", marginBottom: 16, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#111827", marginBottom: 14 }}>New Post</div>
+ 
+            {/* Type picker */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+              {POST_TYPES.map(pt => (
+                <button key={pt.id} onClick={() => { setPostType(pt.id); setFormError(""); }} style={{
+                  padding: "7px 13px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+                  border: `2px solid ${postType === pt.id ? pt.color : "#CBD5E1"}`,
+                  background: postType === pt.id ? pt.bg : "#FFFFFF",
+                  color: postType === pt.id ? pt.color : "#6E7187",
+                  cursor: "pointer", transition: "all 0.15s"
+                }}>{pt.label}</button>
+              ))}
             </div>
-
-            {/* Scrollable form */}
-            <div style={{ overflowY: "auto", padding: "0 20px 20px", flex: 1 }}>
-
-              <SectionCard number="1" title="About You" icon="👤" accent="#7AAFD4">
-                <Field label="Full Name">
-                  <Input value={profile.name} onChange={v => set("name", sanitizeProfileText(v))} placeholder="Your name" />
-                </Field>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-                  <Field label="Height">
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <Input value={profile.height_ft} onChange={v => set("height_ft", v)} placeholder="ft" type="number" min={3} max={8} />
-                      <Input value={profile.height_in} onChange={v => set("height_in", v)} placeholder="in" type="number" min={0} max={11} />
-                    </div>
-                  </Field>
-                  <Field label="Weight">
-                    <Input value={profile.weight} onChange={v => set("weight", v)} placeholder="lbs" type="number" min={50} max={700} unit="lbs" />
-                  </Field>
-                </div>
-                <Field label="Sex">
-                  <PillGroup multi={false} value={profile.sex} onChange={v => set("sex", v)} options={["Male","Female","Non-binary","Prefer not to say"]} />
-                </Field>
-              </SectionCard>
-
-              <SectionCard number="2" title="Goals & Dietary Needs" icon="🎯" accent="#7AAFD4">
-                <Field label="Oxalate Goal" hint="Strict = <50mg/day · Moderate = 50–100mg/day">
-                  <PillGroup multi={false} value={profile.oxalate_goal} onChange={v => set("oxalate_goal", v)}
-                    options={[{value:"strict",label:"Strict <50mg"},{value:"moderate",label:"Moderate 50–100mg"},{value:"custom",label:"Custom"}]}
-                    color="#7AAFD4"
-                  />
-                  {profile.oxalate_goal === "custom" && (
-                    <div style={{ marginTop: 10 }}>
-                      <Input value={profile.custom_oxalate_limit} onChange={v => set("custom_oxalate_limit", v)} placeholder="e.g. 75" type="number" min={0} max={999} unit="mg/day" />
-                    </div>
-                  )}
-                </Field>
-                <Field label="Dietary Style">
-                  <PillGroup value={profile.dietary_needs} onChange={v => set("dietary_needs", v)}
-                    options={["Gluten-Free","Dairy-Free","Vegan","Vegetarian","Keto","Paleo","Halal","Kosher","Low-Sodium","Low-Sugar"]}
-                    color="#7AAFD4"
-                  />
-                </Field>
-              </SectionCard>
-
-              <SectionCard number="3" title="Medical Conditions" icon="🏥" accent="#7AAFD4">
-                <Field label="Relevant conditions" hint="Helps personalize recommendations">
-                  <PillGroup value={profile.medical_conditions} onChange={v => set("medical_conditions", v)}
-                    options={["Kidney Stones","Crohn's Disease","IBS","Celiac Disease","Type 2 Diabetes","Hypertension","Gout","Hyperoxaluria","Osteoporosis","Other"]}
-                    color="#7AAFD4"
-                  />
-                </Field>
-              </SectionCard>
-
-              <SectionCard number="4" title="Cuisines You Love" icon="🍜" accent="#7AAFD4">
-                <Field label="Pick your favorites">
-                  <PillGroup value={profile.cuisines} onChange={v => set("cuisines", v)}
-                    options={["American","Mexican","Japanese","Korean","Chinese","Thai","Italian","Mediterranean","Persian","Indian","Caribbean","Vietnamese","Ethiopian","French"]}
-                    color="#7AAFD4"
-                  />
-                </Field>
-              </SectionCard>
-
-              <SectionCard number="5" title="Ingredients to Avoid" icon="🚫" accent="#7AAFD4">
-                <Field label="We'll flag these in recommendations">
-                  <TagInput tags={profile.disliked_ingredients} onChange={v => set("disliked_ingredients", v)}
-                    placeholder="e.g. beets, spinach, tofu…"
-                    suggestions={["Spinach","Beets","Almonds","Peanuts","Rhubarb","Swiss chard","Sweet potato","Chocolate","Black tea","Tofu","Soy milk","Okra"]}
-                  />
-                </Field>
-              </SectionCard>
-
-              <SectionCard number="6" title="Eating Patterns" icon="🔄" accent="#7AAFD4">
-                <Field label="How do you typically eat?">
-                  <PillGroup value={profile.eating_patterns} onChange={v => set("eating_patterns", v)}
-                    options={[{value:"intermittent_fasting",label:"Intermittent Fasting"},{value:"time_restricted",label:"Time-Restricted"},{value:"grazing",label:"Grazing"},{value:"3_meals",label:"3 Structured Meals"},{value:"meal_prep",label:"Meal Prep"},{value:"eating_out",label:"Frequent Dining Out"},{value:"skips_breakfast",label:"Skips Breakfast"},{value:"mindful",label:"Mindful Eating"}]}
-                    color="#7AAFD4"
-                  />
-                </Field>
-              </SectionCard>
-
-              <SectionCard number="7" title="Meals Per Day" icon="🍽" accent="#7AAFD4">
-                <Field label="How many meals/eating occasions per day?">
-                  <div style={{ textAlign: "center", marginBottom: 10 }}>
-                    <div style={{ fontSize: 48, fontWeight: 900, color: "#7AAFD4", lineHeight: 1 }}>{profile.meals_per_day}</div>
-                  </div>
-                  <input type="range" min={2} max={5} step={1} value={profile.meals_per_day}
-                    onChange={e => set("meals_per_day", parseInt(e.target.value))}
-                    style={{ width: "100%", accentColor: "#7AAFD4", marginBottom: 10 }}
-                  />
-                </Field>
-              </SectionCard>
-
-              <SectionCard number="8" title="Location" icon="📍" accent="#7AAFD4">
-                <Field label="Your area">
-                  <PillGroup multi={false} value={profile.location} onChange={v => set("location", v)}
-                    options={["Pasadena","Highland Park","South Pasadena","Eagle Rock","San Marino","Hastings Ranch","Other Pasadena area"]}
-                    color="#7AAFD4"
-                  />
-                </Field>
-              </SectionCard>
-
-              {saveError && (
-                <div style={{ background: "#FDE8E0", border: "1px solid #E05540", borderRadius: 14, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#E05540", fontWeight: 600 }}>
-                  {saveError}
-                </div>
-              )}
-
-              <button onClick={saveProfile} style={{
-                width: "100%", padding: "15px",
-                background: saved ? "#7AAFD4" : "#3A7090",
-                color: "#FFFFFF", border: "none", borderRadius: 18,
-                fontSize: 17, fontWeight: 800, cursor: "pointer",
-                transition: "all 0.2s", marginTop: 8
-              }}>
-                {saved ? "✓ Saved!" : "Save Profile"}
+ 
+            {/* Name — maxLength enforced in HTML and sanitized on submit */}
+            <input value={name} onChange={e => { setName(e.target.value); setFormError(""); }}
+              placeholder="Your name or nickname"
+              maxLength={50}
+              style={{ width: "100%", padding: "10px 12px", marginBottom: 10, fontSize: 15, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+            />
+ 
+            {/* Content — character counter + maxLength */}
+            <div style={{ position: "relative", marginBottom: 10 }}>
+              <textarea value={content} onChange={e => { setContent(e.target.value); setFormError(""); }} rows={4}
+                maxLength={1000}
+                placeholder={
+                  postType === "recipe" ? "Share your low-oxalate recipe — ingredients, steps, tips..." :
+                  postType === "event"  ? "Tell us about your event — when, where, what to bring..." :
+                                         "How did your week go? Share your total mg and any wins..."
+                }
+                style={{ width: "100%", padding: "10px 12px 26px", fontSize: 15, border: "1px solid #d1d5db", borderRadius: 12, outline: "none", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
+              />
+              <span style={{ position: "absolute", bottom: 8, right: 10, fontSize: 11, color: content.length > 900 ? "#ef4444" : "#B0B3C4", pointerEvents: "none" }}>
+                {content.length}/1000
+              </span>
+            </div>
+ 
+            {/* Weekly mg field */}
+            {postType === "weekly" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 12px", background: "#7AAFD4", borderRadius: 12, border: "1px solid #7dd3fc" }}>
+                <span style={{ fontSize: 18 }}>📊</span>
+                <input type="number" value={oxTotal} onChange={e => { setOxTotal(e.target.value); setFormError(""); }}
+                  placeholder="e.g. 450" min={0} max={99999}
+                  style={{ width: 80, padding: "6px 8px", fontSize: 17, fontWeight: 700, border: "1px solid #7dd3fc", borderRadius: 6, outline: "none", fontFamily: "inherit", textAlign: "center" }}
+                />
+                <span style={{ fontSize: 13, color: "#7AAFD4", fontWeight: 600 }}>mg total this week</span>
+              </div>
+            )}
+ 
+            {/* Validation / rate-limit error */}
+            {formError && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 12, padding: "9px 12px", marginBottom: 10, fontSize: 13, color: "#dc2626", fontWeight: 600 }}>
+                {formError}
+              </div>
+            )}
+ 
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => { setShowForm(false); setFormError(""); }} style={{ flex: 1, padding: "10px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#FFFFFF", color: "#6E7187", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+                Cancel
               </button>
-
+              <button onClick={submitPost} disabled={posting || !name.trim() || !content.trim()} style={{
+                flex: 2, padding: "10px", borderRadius: 12, border: "none",
+                background: posting || !name.trim() || !content.trim() ? "#A8DEC0" : "#7AAFD4",
+                color: "white", fontSize: 16, fontWeight: 700,
+                cursor: posting ? "wait" : "pointer", transition: "background 0.15s"
+              }}>{posting ? "Posting..." : "Post to Community"}</button>
             </div>
           </div>
+        )}
+ 
+        {/* ── Rate limit toast ── */}
+        {rateLimitMsg && (
+          <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", zIndex: 999, background: "#1f2937", color: "white", padding: "10px 20px", borderRadius: 999, fontSize: 15, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", whiteSpace: "nowrap" }}>
+            {rateLimitMsg}
+          </div>
+        )}
+ 
+        {/* ── Filter tabs ── */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto", paddingBottom: 2 }}>
+          {[["all", "✨ All"], ...POST_TYPES.map(pt => [pt.id, pt.label])].map(([id, label]) => (
+            <button key={id} onClick={() => setFilterType(id)} style={{
+              padding: "6px 13px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+              border: "1px solid", whiteSpace: "nowrap", cursor: "pointer", transition: "all 0.15s",
+              background: filterType === id ? "#111827" : "#FFFFFF",
+              borderColor: filterType === id ? "#111827" : "#CBD5E1",
+              color: filterType === id ? "white" : "#6E7187",
+              flexShrink: 0
+            }}>{label}</button>
+          ))}
+        </div>
+ 
+        {/* ── Feed ── */}
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "48px 0", color: "#6E7187" }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>🌿</div>
+            <div style={{ fontSize: 13 }}>Loading community...</div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "48px 20px" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>
+              {filterType === "recipe" ? "🥗" : filterType === "event" ? "📅" : filterType === "weekly" ? "📊" : "🌱"}
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#374151", marginBottom: 6 }}>
+              {posts.length === 0 ? "Be the first to post!" : "Nothing here yet"}
+            </div>
+            <div style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6 }}>
+              {posts.length === 0
+                ? "Share a recipe, plan a picnic, or post your weekly oxalate total to get things started."
+                : "Be the first to share one of these!"}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {filtered.map(post => {
+              const pt = POST_TYPES.find(p => p.id === post.type) || POST_TYPES[0];
+              const isLiked = likedIds[post.id];
+              return (
+                <div key={post.id} style={{
+                  background: "#FFFFFF", borderRadius: 18,
+                  border: `1px solid ${pt.border}`,
+                  padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+                }}>
+                  {/* Post header */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                      <div style={{
+                        width: 38, height: 38, borderRadius: "50%",
+                        background: `linear-gradient(135deg, ${pt.color}, ${pt.color}88)`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 15, fontWeight: 900, color: "white", flexShrink: 0
+                      }}>
+                        {post.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{post.name}</div>
+                        <div style={{ fontSize: 14, color: "#6E7187" }}>{timeAgo(post.ts)}</div>
+                      </div>
+                    </div>
+                    <span style={{
+                      padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+                      background: pt.bg, color: pt.color, border: `1px solid ${pt.border}`, flexShrink: 0
+                    }}>{pt.label}</span>
+                  </div>
+ 
+                  {/* Weekly oxalate highlight card */}
+                  {post.type === "weekly" && post.oxTotal != null && (
+                    <div style={{
+                      borderRadius: 14, padding: "10px 14px", marginBottom: 12,
+                      background: post.oxTotal < 350 ? "#7AAFD4" : post.oxTotal < 700 ? "#fffbeb" : "#fef2f2",
+                      border: `1px solid ${post.oxTotal < 350 ? "#93C5FD" : post.oxTotal < 700 ? "#fde68a" : "#fca5a5"}`,
+                      display: "flex", alignItems: "center", gap: 12
+                    }}>
+                      <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, color: post.oxTotal < 350 ? "#7AAFD4" : post.oxTotal < 700 ? "#d97706" : "#dc2626" }}>
+                        {post.oxTotal}
+                        <span style={{ fontSize: 15, fontWeight: 600 }}>mg</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Weekly Total</div>
+                        <div style={{ fontSize: 14, color: "#6E7187" }}>
+                          {post.oxTotal < 350 ? "🏆 Outstanding week!" : post.oxTotal < 700 ? "👍 On track" : "💪 Keep going, every day counts"}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+ 
+                  {/* Post body */}
+                  <div style={{ fontSize: 15, color: "#374151", lineHeight: 1.65, whiteSpace: "pre-wrap", marginBottom: 14 }}>
+                    {post.content}
+                  </div>
+ 
+                  {/* Like row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12, borderTop: "1px solid #f3f4f6" }}>
+                    <button onClick={() => toggleLike(post.id)} style={{
+                      display: "flex", alignItems: "center", gap: 6, padding: "5px 14px",
+                      borderRadius: 999, border: `1px solid ${isLiked ? "#fca5a5" : "#CBD5E1"}`,
+                      background: isLiked ? "#fef2f2" : "#FFFFFF",
+                      color: isLiked ? "#ef4444" : "#6E7187",
+                      fontSize: 12, fontWeight: 700, cursor: isLiked ? "default" : "pointer", transition: "all 0.15s"
+                    }}
+                      onMouseEnter={e => { if (!isLiked) { e.currentTarget.style.borderColor = "#fca5a5"; e.currentTarget.style.color = "#ef4444"; }}}
+                      onMouseLeave={e => { if (!isLiked) { e.currentTarget.style.borderColor = "#CBD5E1"; e.currentTarget.style.color = "#6E7187"; }}}
+                    >
+                      {isLiked ? "❤️" : "🤍"} {post.likes || 0}
+                    </button>
+                    <span style={{ fontSize: 14, color: "#6E7187" }}>
+                      {post.type === "recipe" ? "Tap ❤️ if you'd make this" :
+                       post.type === "event"  ? "Tap ❤️ if you're interested" :
+                                               "Tap ❤️ to cheer them on"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+ 
+      <PageFooter onNavigate={onNavigate} />
+ 
+      {/* ── Floating action bar — hide on scroll down, show on scroll up ── */}
+      {!showForm && !showRequest && (
+        <div style={{
+          position: "fixed",
+          bottom: buttonsVisible ? 82 : -100,  // 82 = above the 70px bottom nav + gap
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 450,
+          display: "flex",
+          gap: 10,
+          transition: "bottom 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          width: "calc(100% - 32px)",
+          maxWidth: 480,
+        }}>
+          {/* Share button */}
+          <button
+            onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            style={{
+              flex: 1, padding: "14px 10px",
+              background: "#2C5282",
+              color: "#FFFFFF", border: "none",
+              borderRadius: 999,
+              fontSize: 16, fontWeight: 800, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              boxShadow: "0 8px 24px rgba(44,82,130,0.35)",
+              transition: "transform 0.15s"
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+          >
+            <span style={{ fontSize: 16 }}>✏️</span>
+            Share
+          </button>
+          {/* Request to Add button */}
+          <button
+            onClick={() => { setShowRequest(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            style={{
+              flex: 1, padding: "14px 10px",
+              background: "#FFFFFF",
+              color: "#2C5282",
+              border: "2.5px solid #2C5282",
+              borderRadius: 999,
+              fontSize: 16, fontWeight: 800, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              boxShadow: "0 8px 24px rgba(44,82,130,0.15)",
+              transition: "transform 0.15s"
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+          >
+            <span style={{ fontSize: 16 }}>📍</span>
+            Request to Add
+          </button>
         </div>
       )}
-
-    </div>
-    );
-}
-
-// ─── COMMUNITY PAGE ──────────────────────────────────────────────────────────
-
-
-// ─── SHARED FOOTER ────────────────────────────────────────────────────────────
- 
-function PageFooter({ onNavigate }) {
-  return (
-    <div style={{
-      background: "#3A7090", padding: "28px 20px 20px",
-      marginTop: 24, textAlign: "center"
-    }}>
-      <img src={LOGO_B64} alt="Loxalate" style={{ height: 28, width: "auto", opacity: 0.85, marginBottom: 12 }} />
-      <div style={{ display: "flex", justifyContent: "center", gap: 20, flexWrap: "wrap", marginBottom: 14 }}>
-        {[["map","Map"],["alchemy","Alchemy"],["community","Community"],["about","About"],["faq","FAQ"]].map(([id, label]) => (
-          <button key={id} onClick={() => onNavigate(id)} style={{
-            background: "none", border: "none", color: "rgba(255,255,255,0.7)",
-            fontSize: 13, fontWeight: 600, cursor: "pointer", padding: 0
-          }}>{label}</button>
-        ))}
-      </div>
-      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
-        © {new Date().getFullYear()} Loxalate · loxalate.me · All rights reserved
-      </div>
     </div>
   );
 }
