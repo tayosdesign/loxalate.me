@@ -17,7 +17,7 @@ import { getDishSVG } from "./DishThumb";
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
-const CUISINES = ["All", "Asian", "Mediterranean", "American", "Middle Eastern", "Seafood"];
+const CUISINES = ["All", "American", "Asian", "Middle Eastern", "Mediterranean", "Latin", "Indian", "Korean", "Seafood", "Cafe"];
 
 const OX_BANDS = [
   { key: "low",  label: "Low",  sub: "≤10 mg",  max: 10  },
@@ -28,41 +28,91 @@ const OX_BANDS = [
 // How many cards to show per cuisine row before "View more"
 const PREVIEW_COUNT = 4;
 
-// ── CUISINE → area mapping (dishes.js uses area not cuisine tag, so we map) ──
+// ── CUISINE → area mapping (fallback only) ────────────────────────────────────
 const AREA_TO_CUISINE = {
-  "Pasadena":         "American",
-  "South Pasadena":   "American",
-  "San Marino":       "American",
-  "Oak Knoll":        "American",
-  "Hastings Ranch":   "American",
-  "Normandie Heights":"American",
-  "Highland Park":    "Asian",
-  "Eagle Rock":       "Mediterranean",
-  "San Gabriel":      "Asian",
+  "Pasadena":          "American",
+  "South Pasadena":    "American",
+  "San Marino":        "American",
+  "Oak Knoll":         "American",
+  "Hastings Ranch":    "American",
+  "Normandie Heights": "American",
+  "Highland Park":     "Cafe",
+  "Eagle Rock":        "American",
+  "San Gabriel":       "Asian",
 };
 
-// Restaurant name → cuisine override (for places with a clear cuisine identity)
+// Restaurant name → cuisine (complete accurate mapping for all 54 restaurants)
 const RESTAURANT_CUISINE = {
-  "A La Beirut":                 "Mediterranean",
-  "Annapurna Grill":             "Middle Eastern",
-  "New Delhi Palace":            "Middle Eastern",
-  "Heidar Baba":                 "Middle Eastern",
-  "Abu Kabab":                   "Middle Eastern",
-  "Deda Restaurant":             "Middle Eastern",
-  "Thai Eagle Rox":              "Asian",
-  "Star Leaf":                   "Asian",
-  "Joy":                         "Asian",
-  "Bone Kettle":                 "Asian",
-  "Manduyo":                     "Asian",
-  "Young Dong Tofu House":       "Asian",
-  "Caribbean Gourmet":           "Asian",
-  "Lee's Sandwiches":            "Asian",
-  "Marina Restaurant":           "Seafood",
-  "Eden Garden Bar & Grill":     "Seafood",
-  "Parkway Grill":               "American",
-  "Granville":                   "American",
-  "Houston's":                   "American",
-  "Pie 'n Burger":               "American",
+  // ── Cafes ──────────────────────────────────────────────────────────────────
+  "Urth Caffé":                   "Cafe",
+  "Civil Coffee":                 "Cafe",
+  "Kitchen Mouse":                "Cafe",
+  "Lovebirds Cafe":               "Cafe",
+  "Schnell's Bakery & Cafe":      "Cafe",
+  "Seed Bakery":                  "Cafe",
+  "Fair Oaks Pharmacy & Soda Fountain": "Cafe",
+  "Amara Cafe & Restaurant":      "Cafe",
+  "Ginger Corner Market":         "Cafe",
+  "Whole Foods Market (Hastings Ranch)": "Cafe",
+
+  // ── American ───────────────────────────────────────────────────────────────
+  "The Arbour":                   "American",
+  "La Grande Orange Cafe":        "American",
+  "True Food Kitchen":            "American",
+  "Pie 'n Burger":                "American",
+  "Tender Greens":                "American",
+  "Sweetgreen":                   "American",
+  "Veggie Grill":                 "American",
+  "Granville":                    "American",
+  "Houston's":                    "American",
+  "Lume Restaurant":              "American",
+  "Hastings Ranch Grill":         "American",
+  "Julienne Restaurant":          "American",
+  "The Raymond 1886":             "American",
+  "Osa Rooftop":                  "American",
+  "Shakers":                      "American",
+  "Urban Plates":                 "American",
+  "Parkway Grill":                "American",
+  "Magnolia House":               "American",
+  "Dancing Spoons":               "American",
+  "Mamma's Brick Oven Pizza & Pasta": "American",
+
+  // ── Latin ──────────────────────────────────────────────────────────────────
+  "Home State Tex-Mex":           "Latin",
+  "El Dorado Pollos A La Brasa":  "Latin",
+  "Mercado":                      "Latin",
+  "Caribbean Gourmet":            "Latin",
+
+  // ── Asian ──────────────────────────────────────────────────────────────────
+  "Joy":                          "Asian",
+  "Thai Eagle Rox":               "Asian",
+  "Star Leaf":                    "Asian",
+  "Shiro Restaurant":             "Asian",
+  "Manduyo":                      "Asian",
+  "Lee's Sandwiches":             "Asian",
+  "Bay Poke":                     "Asian",
+  "Top Restaurant":               "Asian",
+
+  // ── Korean ─────────────────────────────────────────────────────────────────
+  "Bone Kettle":                  "Korean",
+  "Young Dong Tofu House":        "Korean",
+
+  // ── Indian ─────────────────────────────────────────────────────────────────
+  "Annapurna Grill":              "Indian",
+  "New Delhi Palace":             "Indian",
+
+  // ── Middle Eastern ─────────────────────────────────────────────────────────
+  "Heidar Baba":                  "Middle Eastern",
+  "Abu Kabab":                    "Middle Eastern",
+  "Deda Restaurant":              "Middle Eastern",
+  "Burger Continental":           "Middle Eastern",
+
+  // ── Mediterranean ──────────────────────────────────────────────────────────
+  "A La Beirut":                  "Mediterranean",
+  "Eden Garden Bar & Grill":      "Mediterranean",
+
+  // ── Seafood ────────────────────────────────────────────────────────────────
+  "Marina Restaurant":            "Seafood",
 };
 
 function getCuisine(dish) {
