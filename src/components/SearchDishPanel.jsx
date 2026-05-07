@@ -116,8 +116,8 @@ const RESTAURANT_CUISINE = {
 };
 
 function getCuisine(dish) {
-  return RESTAURANT_CUISINE[dish.restaurant]
-    || AREA_TO_CUISINE[dish.area]
+  return RESTAURANT_CUISINE[dish.restaurantName]
+    || AREA_TO_CUISINE[dish.restaurantArea]
     || "American";
 }
 
@@ -236,11 +236,11 @@ function DishCard({ dish, dimmed, onClick }) {
       />
       <div style={S.cardBody}>
         <div style={S.cardMgRow}>
-          <span style={S.cardMg}>{dish.mg}</span>
+          <span style={S.cardMg}>{dish.total}</span>
           <span style={S.cardMgUnit}>mg</span>
         </div>
         <div style={S.cardName}>{dish.dish}</div>
-        <span style={S.cardTag}>{dish.restaurant}</span>
+        <span style={S.cardTag}>{dish.restaurantName}</span>
       </div>
     </div>
   );
@@ -271,11 +271,11 @@ function CuisineSection({ cuisine, dishes, activeCuisine, oxBand, searchQuery, e
       {/* Horizontal scroll row */}
       <div style={S.hrow}>
         {shown.map((dish, i) => {
-          const isDimmed = dish.mg > oxMax ||
-            (searchQuery && !dish.dish.toLowerCase().includes(searchQuery.toLowerCase()) && !dish.restaurant.toLowerCase().includes(searchQuery.toLowerCase()));
+          const isDimmed = dish.total > oxMax ||
+            (searchQuery && !dish.dish.toLowerCase().includes(searchQuery.toLowerCase()) && !dish.restaurantName.toLowerCase().includes(searchQuery.toLowerCase()));
           return (
             <DishCard
-              key={`${dish.restaurant}-${dish.dish}-${i}`}
+              key={`${dish.restaurantName}-${dish.dish}-${i}`}
               dish={dish}
               dimmed={isDimmed}
               onClick={() => !isDimmed && onSelectDish(dish)}
@@ -319,11 +319,11 @@ function DishDetail({ dish, onClose, onAdd }) {
   const [added, setAdded] = useState(false);
   if (!dish) return null;
 
-  const total = dish.total ?? dish.mg ?? 0;
+  const total = dish.total ?? dish.total ?? 0;
   const col   = oxColor(total);
   const label = oxLabel(total);
-  const restaurantName = dish.restaurantName ?? dish.restaurant ?? "";
-  const area           = dish.restaurantArea ?? dish.area ?? "";
+  const restaurantName = dish.restaurantName ?? dish.restaurantName ?? "";
+  const area           = dish.restaurantArea ?? dish.restaurantArea ?? "";
   const maxOx = dish.ingredients?.length
     ? Math.max(...dish.ingredients.map(i => i.oxalate), 1)
     : 1;
@@ -483,8 +483,8 @@ export default function SearchDishPanel({ onAdd = () => {} }) {
   const oxMax = OX_BANDS.find(b => b.key === oxBand)?.max ?? 9999;
   const q = search.toLowerCase();
   const hasMatch = (dish) =>
-    dish.mg <= oxMax &&
-    (!q || dish.dish.toLowerCase().includes(q) || dish.restaurant.toLowerCase().includes(q));
+    dish.total <= oxMax &&
+    (!q || dish.dish.toLowerCase().includes(q) || dish.restaurantName.toLowerCase().includes(q));
 
   const toggleExpand = useCallback((cuisine) => {
     setExpanded(prev => ({ ...prev, [cuisine]: !prev[cuisine] }));
