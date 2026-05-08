@@ -1813,7 +1813,7 @@ export default function RestaurantMap() {
 
                 {/* Best picks strip — 12 curated dishes 0–7mg, one per restaurant */}
                 {(() => {
-                 const CURATED_PICKS = [
+                
   const CURATED_PICKS = [
   { dish: "Scrambled Eggs with Bacon", restaurantName: "Kitchen Mouse", restaurantArea: "Highland Park", total: 1, cookingMethod: "Pan-fried", modifications: "None needed", ingredients: [{ name: "Eggs", amount: "3 large", oxalate: 0 }, { name: "Bacon", amount: "2 strips", oxalate: 0 }, { name: "Butter", amount: "1 tsp", oxalate: 1 }],
     svg: <svg viewBox="0 0 130 82" xmlns="http://www.w3.org/2000/svg"><rect width="130" height="82" fill="#FFFBF0"/><ellipse cx="65" cy="70" rx="52" ry="10" fill="#F0DCA0" opacity="0.6"/><path d="M14 58 Q14 70 65 72 Q116 70 116 58 Q116 48 65 44 Q14 48 14 58 Z" fill="#F8ECC8"/><ellipse cx="65" cy="54" rx="50" ry="12" fill="#FDEEDE"/><ellipse cx="46" cy="52" rx="20" ry="14" fill="#FFFDE8"/><ellipse cx="46" cy="50" rx="18" ry="12" fill="#FFFEF8"/><ellipse cx="46" cy="48" rx="9" ry="8" fill="#FAD420"/><ellipse cx="44" cy="46" rx="7" ry="6" fill="#FCDF30"/><ellipse cx="80" cy="52" rx="18" ry="13" fill="#FFFDE8"/><ellipse cx="80" cy="50" rx="16" ry="11" fill="#FFFEF8"/><ellipse cx="80" cy="48" rx="8" ry="7" fill="#FAD420"/><ellipse cx="78" cy="46" rx="6.5" ry="5.5" fill="#FCDF30"/><path d="M20 64 Q30 60 40 64 Q50 68 60 64 Q70 60 80 64 Q90 68 100 64 Q108 62 110 66 Q108 70 100 68 Q90 64 80 68 Q70 72 60 68 Q50 64 40 68 Q30 72 20 68 Z" fill="#8B2010"/><path d="M20 58 Q30 54 42 58 Q52 62 64 58 Q74 54 86 58 Q96 62 110 58 Q112 62 110 64 Q96 60 86 64 Q74 68 64 62 Q52 58 42 62 Q30 66 20 62 Z" fill="#A02818"/></svg> },
