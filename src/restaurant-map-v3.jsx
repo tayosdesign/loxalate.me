@@ -742,6 +742,908 @@ function checkRateLimit(action) {
 
 // ─── COMMUNITY PAGE ──────────────────────────────────────────────────────────
 
+function AlchemyPage({ addToLog = () => {}, onNavigate = () => {} }) {
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedRecipe, setSelectedRecipe]     = useState(null);
+  const [savedRecipes, setSavedRecipes]         = useState({});
+  const [loadingSaved, setLoadingSaved]         = useState(true);
+  const [loggedRecipes, setLoggedRecipes]       = useState({});
+
+  function addRecipeToLog(recipe) {
+    addToLog({
+      dish: recipe.title,
+      restaurantName: recipe.source,
+      total: recipe.totalOxalate,
+    });
+    // Flash confirmation for 2s
+    setLoggedRecipes(prev => ({ ...prev, [recipe.id]: true }));
+    setTimeout(() => setLoggedRecipes(prev => ({ ...prev, [recipe.id]: false })), 2000);
+  }
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get("lo-saved-recipes-v1", false);
+        if (r?.value) setSavedRecipes(JSON.parse(r.value));
+      } catch (_) {}
+      setLoadingSaved(false);
+    })();
+  }, []);
+
+  async function toggleSave(recipeId) {
+    const updated = { ...savedRecipes, [recipeId]: !savedRecipes[recipeId] };
+    if (!updated[recipeId]) delete updated[recipeId];
+    setSavedRecipes(updated);
+    try { await window.storage.set("lo-saved-recipes-v1", JSON.stringify(updated), false); }
+    catch (_) {}
+  }
+  // ── Builder state ─────────────────────────────────────────────────────────
+  const [showBuilder, setShowBuilder]               = useState(false);
+  const [builderName, setBuilderName]               = useState("");
+  const [builderCategory, setBuilderCategory]       = useState("Dinner");
+  const [builderServings, setBuilderServings]       = useState(2);
+  const [builderSteps, setBuilderSteps]             = useState([""]);
+  const [builderTip, setBuilderTip]                 = useState("");
+  const [builderError, setBuilderError]             = useState("");
+  const [builderSaved, setBuilderSaved]             = useState(false);
+  const [myRecipes, setMyRecipes]                   = useState([]);
+  const [selectedMyRecipe, setSelectedMyRecipe]     = useState(null);
+  const [builderIngInput, setBuilderIngInput]       = useState("");
+  const [builderIngredients, setBuilderIngredients] = useState([
+    { name: "", amount: "", oxalate: "" }
+  ]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const m = await window.storage.get("lo-my-recipes-v1", false);
+        if (m?.value) setMyRecipes(JSON.parse(m.value));
+      } catch (_) {}
+    })();
+  }, []);
+
+  const INGREDIENT_SUGGESTIONS = [
+    "Chicken breast","Salmon","Beef (ground)","Lamb","Shrimp","Eggs","Turkey breast","Cod",
+    "White rice","White pasta","Cauliflower","Zucchini","Cucumber","Romaine lettuce","Bok choy",
+    "Mushrooms","Avocado","Banana","Cantaloupe","Apple (peeled)","Garlic","Onion","Red bell pepper",
+    "Butter","Olive oil","Parmesan","Mozzarella","Cheddar","Yogurt (plain)","Milk","Lemon juice",
+    "Low-sodium soy sauce","Ginger","Scallions","Basmati rice","Corn tortilla","White bread",
+    "Asparagus","Yellow squash","Celery","Carrots",
+  ];
+
+  function addIngRow() { setBuilderIngredients(p => [...p, { name: "", amount: "", oxalate: "" }]); }
+  function removeIngRow(i) { setBuilderIngredients(p => p.filter((_, idx) => idx !== i)); }
+  function updateIng(i, field, val) {
+    setBuilderIngredients(p => p.map((ing, idx) => idx !== i ? ing : {
+      ...ing,
+      [field]: field === "oxalate" ? val.replace(/[^0-9]/g,"") : val.slice(0,120)
+    }));
+  }
+  function addStep() { setBuilderSteps(p => [...p, ""]); }
+  function removeStep(i) { setBuilderSteps(p => p.filter((_,idx) => idx !== i)); }
+  function updateStep(i, val) { setBuilderSteps(p => p.map((s,idx) => idx === i ? val.slice(0,300) : s)); }
+
+  const builderTotal = builderIngredients.reduce((sum, i) => sum + (parseInt(i.oxalate)||0), 0);
+
+  function builderOxColor(mg) {
+    if (mg <= 8)  return "#7AAFD4";
+    if (mg <= 15) return "#a3c4e8";
+    if (mg <= 25) return "#f59e0b";
+    return "#ef4444";
+  }
+
+  const rlSave = { ts: [] };
+  function checkBuildRateLimit() {
+    const now = Date.now();
+    rlSave.ts = rlSave.ts.filter(t => now - t < 60000);
+    if (rlSave.ts.length >= 5) return false;
+    rlSave.ts.push(now); return true;
+  }
+
+  async function saveMyRecipe() {
+    setBuilderError("");
+    const cleanName = builderName.trim().slice(0,80);
+    const validIngs = builderIngredients.filter(i => i.name.trim());
+    const validSteps = builderSteps.filter(s => s.trim());
+    if (!cleanName)          { setBuilderError("Give your recipe a name."); return; }
+    if (!validIngs.length)   { setBuilderError("Add at least one ingredient."); return; }
+    if (!validSteps.length)  { setBuilderError("Add at least one step."); return; }
+    if (!checkBuildRateLimit()) { setBuilderError("⏱ Slow down — max 5 saves per minute."); return; }
+
+    const newRecipe = {
+      id: "my_" + Date.now(),
+      title: cleanName,
+      category: builderCategory,
+      servings: builderServings,
+      totalOxalate: builderTotal,
+      tag: "My Recipe",
+      tagColor: "#6E7187",
+      source: "Your Kitchen",
+      prepTime: "Your timing",
+      ingredients: validIngs.map(i => ({
+        name: i.name.trim().slice(0,80),
+        amount: i.amount.trim().slice(0,40),
+        oxalate: parseInt(i.oxalate)||0
+      })),
+      steps: validSteps,
+      tips: builderTip.trim().slice(0,300) || "Your personal note goes here.",
+      whyItWorks: "Your own creation — track the total oxalate and adjust to hit your daily goal.",
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [newRecipe, ...myRecipes];
+    setMyRecipes(updated);
+    try { await window.storage.set("lo-my-recipes-v1", JSON.stringify(updated), false); } catch(_){}
+
+    setBuilderSaved(true);
+    setTimeout(() => {
+      setBuilderSaved(false); setShowBuilder(false);
+      setBuilderName(""); setBuilderTip(""); setBuilderSteps([""]); setBuilderError("");
+      setBuilderIngredients([{ name:"", amount:"", oxalate:"" }]);
+    }, 1800);
+  }
+
+  async function deleteMyRecipe(id) {
+    const updated = myRecipes.filter(r => r.id !== id);
+    setMyRecipes(updated);
+    try { await window.storage.set("lo-my-recipes-v1", JSON.stringify(updated), false); } catch(_){}
+    setSelectedMyRecipe(null);
+  }
+
+  const filtered = selectedCategory === "All"
+    ? ALCHEMY_RECIPES
+    : ALCHEMY_RECIPES.filter(r => r.category === selectedCategory);
+
+  function oxColor(mg) {
+    if (mg <= 8)  return "#7AAFD4";
+    if (mg <= 15) return "#a3c4e8";
+    if (mg <= 25) return "#f59e0b";
+    return "#ef4444";
+  }
+
+  return (
+    <div style={{ background: "#F7F9FC", minHeight: "100vh" }}>
+
+      {/* ── Hero ── */}
+      <div style={{
+        background: "#1E3A5F",
+        padding: "28px 20px 32px", position: "relative", overflow: "hidden"
+      }}>
+        <div style={{ position: "absolute", top: -40, right: -20, width: 160, height: 160, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.08)" }} />
+        <div style={{ position: "absolute", bottom: -20, left: -20, width: 100, height: 100, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.06)" }} />
+        <div style={{ position: "relative", zIndex: 2 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.65)", marginBottom: 6 }}>
+            LOW OXALATE LIVING
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.1, marginBottom: 8 }}>
+            Alchemy 🧪
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", lineHeight: 1.6, maxWidth: 320 }}>
+            Recipes backed by nephrologists, RDs, and kidney stone dietitians — not just food blogs.
+          </div>
+          {/* Source badges */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
+            {[
+              { label: "Nat'l Kidney Foundation", color: "#7AAFD4" },
+              { label: "NIDDK", color: "#7AAFD4" },
+              { label: "Urology Care Foundation", color: "#7AAFD4" },
+              { label: "Kidney Stone Diet RD", color: "#7AAFD4" },
+            ].map(b => (
+              <span key={b.label} style={{
+                fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 999,
+                background: "rgba(255,255,255,0.15)", color: b.color,
+                border: "1px solid rgba(255,255,255,0.2)", whiteSpace: "nowrap"
+              }}>{b.label}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Clinical note ── */}
+      <div style={{ margin: "0 16px", marginTop: -16, position: "relative", zIndex: 10 }}>
+        <div style={{
+          background: "#FFFFFF", borderRadius: 16, padding: "12px 14px",
+          border: "1px solid #6E7187", boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#7AAFD4", marginBottom: 4 }}>
+            🔬 Evidence-Based Approach
+          </div>
+          <div style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6 }}>
+            80% of kidney stones are calcium-oxalate. The Borghi et al. clinical trial found that pairing <strong>calcium with meals</strong> — not a strict low-oxalate diet — reduced recurrence by 49%. Every recipe here applies this principle.
+          </div>
+        </div>
+      </div>
+
+      {/* ── Category filter ── */}
+      <div style={{ padding: "16px 16px 0", overflowX: "auto" }}>
+        <div style={{ display: "flex", gap: 10, paddingBottom: 4 }}>
+          {ALCHEMY_CATEGORIES.map(cat => (
+            <button key={cat} onClick={() => setSelectedCategory(cat)} style={{
+              padding: "7px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+              border: `1.5px solid ${selectedCategory === cat ? "#7AAFD4" : "#6E7187"}`,
+              background: selectedCategory === cat ? "#7AAFD4" : "#FFFFFF",
+              color: selectedCategory === cat ? "#FFFFFF" : "#6E7187",
+              cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s"
+            }}>{cat}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Recipe count ── */}
+      <div style={{ padding: "10px 18px 4px", fontSize: 14, color: "#6E7187", fontWeight: 600 }}>
+        {filtered.length} recipe{filtered.length !== 1 ? "s" : ""} · tap to open
+      </div>
+
+      {/* ── Recipe cards ── */}
+      <div style={{ padding: "10px 18px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
+        {filtered.map(recipe => {
+          const isSaved = !!savedRecipes[recipe.id];
+          const col = oxColor(recipe.totalOxalate);
+          return (
+            <div key={recipe.id}
+              onClick={() => setSelectedRecipe(recipe)}
+              style={{
+                background: "#FFFFFF", borderRadius: 18,
+                border: "1px solid #6E7187",
+                overflow: "hidden", cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                transition: "transform 0.15s, box-shadow 0.15s"
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)"; }}
+            >
+              {/* Color bar top */}
+              <div style={{ height: 4, background: col }} />
+
+              <div style={{ padding: "14px 14px 12px" }}>
+                {/* Top row */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    {/* Tag */}
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 6 }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 999,
+                        background: recipe.tagColor + "18", color: recipe.tagColor,
+                        border: `1px solid ${recipe.tagColor}44`, textTransform: "uppercase", letterSpacing: "0.06em"
+                      }}>{recipe.tag}</span>
+                    </div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: "#2C5282", lineHeight: 1.2 }}>
+                      {recipe.title}
+                    </div>
+                  </div>
+                  {/* Oxalate badge */}
+                  <div style={{ textAlign: "center", marginLeft: 12, flexShrink: 0 }}>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: col, lineHeight: 1 }}>{recipe.totalOxalate}</div>
+                    <div style={{ fontSize: 8, color: col, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>mg ox</div>
+                  </div>
+                </div>
+
+                {/* Meta row */}
+                <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
+                  {[
+                    { icon: "⏱", val: recipe.prepTime },
+                    { icon: "👤", val: `${recipe.servings} serving${recipe.servings > 1 ? "s" : ""}` },
+                    { icon: "📚", val: recipe.category },
+                  ].map(m => (
+                    <span key={m.val} style={{ fontSize: 14, color: "#6E7187", display: "flex", alignItems: "center", gap: 3 }}>
+                      {m.icon} {m.val}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Source */}
+                <div style={{ fontSize: 11, color: "#7AAFD4", fontWeight: 600 }}>
+                  📖 {recipe.source}
+                </div>
+              </div>
+
+              {/* Bottom: save + log + open */}
+              <div style={{ display: "flex", borderTop: "1px solid #7AAFD4" }}>
+                <button
+                  onClick={e => { e.stopPropagation(); toggleSave(recipe.id); }}
+                  style={{
+                    flex: 1, padding: "10px", border: "none", background: "none",
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    color: isSaved ? "#7AAFD4" : "#6E7187",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5
+                  }}
+                >
+                  {isSaved ? "❤️ Saved" : "🤍 Save"}
+                </button>
+                <div style={{ width: 1, background: "#7AAFD4" }} />
+                <button
+                  onClick={e => { e.stopPropagation(); addRecipeToLog(recipe); }}
+                  style={{
+                    flex: 1, padding: "10px", border: "none",
+                    background: loggedRecipes[recipe.id] ? "#7AAFD4" : "none",
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    color: loggedRecipes[recipe.id] ? "#2C5282" : "#7AAFD4",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    transition: "background 0.2s"
+                  }}
+                >
+                  {loggedRecipes[recipe.id] ? "✓ Logged!" : "📋 Log"}
+                </button>
+                <div style={{ width: 1, background: "#7AAFD4" }} />
+                <button style={{
+                  flex: 1, padding: "10px", border: "none", background: "none",
+                  fontSize: 12, fontWeight: 700, color: "#7AAFD4", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 5
+                }}>
+                  View →
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* ── CREATE YOUR OWN RECIPE ── */}
+      <div style={{ padding: "0 18px 12px" }}>
+
+        {/* Section header — sticky */}
+        <div style={{
+          background: "#2C5282",
+          borderRadius: 18, padding: "18px 18px 14px",
+          marginBottom: 12, position: "sticky", top: 70, zIndex: 50, overflow: "hidden"
+        }}>
+          <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)" }} />
+          <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.65)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>
+            LOW OXALATE LIVING
+          </div>
+          <div style={{ fontSize: 19, fontWeight: 900, color: "#FFFFFF", marginBottom: 4 }}>
+            Your Kitchen Lab 🧑‍🍳
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.5, marginBottom: 14 }}>
+            Build your own low-oxalate recipes. We calculate the total oxalate automatically as you add ingredients.
+          </div>
+          <button
+            onClick={() => setShowBuilder(b => !b)}
+            style={{
+              padding: "10px 20px", borderRadius: 999, border: "2px solid rgba(255,255,255,0.5)",
+              background: showBuilder ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.15)",
+              color: "#FFFFFF", fontSize: 17, fontWeight: 800, cursor: "pointer",
+              backdropFilter: "blur(4px)", transition: "all 0.2s"
+            }}
+          >
+            {showBuilder ? "✕ Close Builder" : "+ New Recipe"}
+          </button>
+        </div>
+
+        {/* ── Recipe Template Builder ── */}
+        {showBuilder && (
+          <div style={{ background: "#FFFFFF", borderRadius: 18, border: "1px solid #BFDBFE", marginBottom: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(44,82,130,0.08)" }}>
+
+            {/* Template header — looks like a recipe card */}
+            <div style={{ background: "#F7F9FC", borderBottom: "1px solid #BFDBFE", padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>New Recipe</div>
+                {/* Recipe name inline — feels like filling in a title */}
+                <input
+                  value={builderName}
+                  onChange={e => { setBuilderName(e.target.value); setBuilderError(""); }}
+                  placeholder="Untitled Recipe..."
+                  maxLength={80}
+                  style={{
+                    fontSize: 20, fontWeight: 900, color: "#2C5282",
+                    border: "none", borderBottom: builderName ? "2px solid #7AAFD4" : "2px dashed #BFDBFE",
+                    outline: "none", background: "transparent", fontFamily: "inherit",
+                    width: "100%", padding: "2px 0"
+                  }}
+                />
+              </div>
+              {/* Live oxalate badge */}
+              <div style={{ textAlign: "center", flexShrink: 0, marginLeft: 12, background: builderOxColor(builderTotal) + "18", borderRadius: 12, padding: "8px 12px", border: `1.5px solid ${builderOxColor(builderTotal)}44` }}>
+                <div style={{ fontSize: 26, fontWeight: 900, color: builderOxColor(builderTotal), lineHeight: 1 }}>{builderTotal}</div>
+                <div style={{ fontSize: 10, color: builderOxColor(builderTotal), fontWeight: 700 }}>mg total</div>
+              </div>
+            </div>
+
+            <div style={{ padding: "16px 18px" }}>
+
+              {/* Meal type + servings — pill selectors */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>This is a</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                  {["Breakfast","Lunch","Dinner","Side","Snack"].map(cat => (
+                    <button key={cat} onClick={() => setBuilderCategory(cat)} style={{
+                      padding: "7px 16px", borderRadius: 999, fontSize: 13, fontWeight: 700,
+                      border: `2px solid ${builderCategory === cat ? "#2C5282" : "#BFDBFE"}`,
+                      background: builderCategory === cat ? "#2C5282" : "#FFFFFF",
+                      color: builderCategory === cat ? "#FFFFFF" : "#6E7187",
+                      cursor: "pointer", transition: "all 0.15s"
+                    }}>{cat}</button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 13, color: "#6E7187", fontWeight: 600 }}>Serves</span>
+                  <button onClick={() => setBuilderServings(s => Math.max(1,s-1))} style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #BFDBFE", background: "#F7F9FC", fontSize: 16, cursor: "pointer", fontWeight: 700, color: "#2C5282", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                  <span style={{ fontSize: 18, fontWeight: 900, color: "#2C5282", minWidth: 22, textAlign: "center" }}>{builderServings}</span>
+                  <button onClick={() => setBuilderServings(s => Math.min(12,s+1))} style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #BFDBFE", background: "#F7F9FC", fontSize: 16, cursor: "pointer", fontWeight: 700, color: "#2C5282", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                </div>
+              </div>
+
+              {/* Cooking method — tap to select chips */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Cooked by</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[
+                    { label: "🔥 Grilled",    value: "Grilled" },
+                    { label: "🍳 Pan-seared",  value: "Pan-seared" },
+                    { label: "♨️ Steamed",     value: "Steamed" },
+                    { label: "🫕 Simmered",    value: "Simmered" },
+                    { label: "🌡 Roasted",     value: "Roasted" },
+                    { label: "🥗 Raw",         value: "Raw" },
+                    { label: "🍲 Slow cooked", value: "Slow cooked" },
+                    { label: "🥘 Stir-fried",  value: "Stir-fried" },
+                    { label: "🫙 Baked",       value: "Baked" },
+                    { label: "💧 Boiled",      value: "Boiled" },
+                  ].map(m => {
+                    const isSelected = builderSteps[0] === m.value;
+                    return (
+                      <button key={m.value}
+                        onClick={() => setBuilderSteps([m.value, ...builderSteps.slice(1)])}
+                        style={{
+                          padding: "7px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600,
+                          border: `2px solid ${isSelected ? "#2C5282" : "#BFDBFE"}`,
+                          background: isSelected ? "#EEF4FB" : "#FFFFFF",
+                          color: isSelected ? "#2C5282" : "#6E7187",
+                          cursor: "pointer", transition: "all 0.15s"
+                        }}
+                      >{m.label}</button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Ingredients — fill-in-the-blank rows */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+                  Ingredients
+                  <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", color: "#9ca3af", marginLeft: 6 }}>— enter mg or 0 if unsure</span>
+                </div>
+
+                {builderIngredients.map((ing, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, padding: "10px 12px", background: "#F7F9FC", borderRadius: 12, border: "1px solid #BFDBFE" }}>
+                    {/* Number */}
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#2C5282", color: "#FFFFFF", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i+1}</div>
+                    {/* Ingredient name */}
+                    <input
+                      value={ing.name}
+                      onChange={e => updateIng(i, "name", e.target.value)}
+                      placeholder="Ingredient name..."
+                      list={"ing-suggestions-" + i}
+                      style={{ flex: 2, fontSize: 14, fontWeight: 600, border: "none", borderBottom: "1.5px dashed #BFDBFE", outline: "none", background: "transparent", fontFamily: "inherit", color: "#1e293b", padding: "2px 4px" }}
+                      onFocus={e => e.target.style.borderBottomColor = "#7AAFD4"}
+                      onBlur={e => e.target.style.borderBottomColor = "#BFDBFE"}
+                    />
+                    <datalist id={"ing-suggestions-" + i}>
+                      {INGREDIENT_SUGGESTIONS.map(s => <option key={s} value={s} />)}
+                    </datalist>
+                    {/* Amount */}
+                    <input
+                      value={ing.amount}
+                      onChange={e => updateIng(i, "amount", e.target.value)}
+                      placeholder="1 cup"
+                      style={{ width: 64, fontSize: 13, border: "none", borderBottom: "1.5px dashed #BFDBFE", outline: "none", background: "transparent", fontFamily: "inherit", color: "#6E7187", textAlign: "center", padding: "2px 4px" }}
+                      onFocus={e => e.target.style.borderBottomColor = "#7AAFD4"}
+                      onBlur={e => e.target.style.borderBottomColor = "#BFDBFE"}
+                    />
+                    {/* mg */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+                      <input
+                        value={ing.oxalate}
+                        onChange={e => updateIng(i, "oxalate", e.target.value)}
+                        placeholder="0"
+                        type="number" min={0} max={999}
+                        style={{ width: 44, fontSize: 14, fontWeight: 800, border: "none", borderBottom: `1.5px dashed ${ing.oxalate ? builderOxColor(parseInt(ing.oxalate)||0) : "#BFDBFE"}`, outline: "none", background: "transparent", fontFamily: "inherit", color: ing.oxalate ? builderOxColor(parseInt(ing.oxalate)||0) : "#6E7187", textAlign: "center", padding: "2px 2px" }}
+                        onFocus={e => e.target.style.borderBottomColor = "#7AAFD4"}
+                        onBlur={e => e.target.style.borderBottomColor = ing.oxalate ? builderOxColor(parseInt(ing.oxalate)||0) : "#BFDBFE"}
+                      />
+                      <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>mg</span>
+                    </div>
+                    {/* Remove */}
+                    {builderIngredients.length > 1 && (
+                      <button onClick={() => removeIngRow(i)} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "#fef2f2", color: "#dc2626", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>×</button>
+                    )}
+                  </div>
+                ))}
+
+                <button onClick={addIngRow} style={{
+                  width: "100%", padding: "9px", borderRadius: 12,
+                  border: "2px dashed #BFDBFE", background: "transparent",
+                  color: "#7AAFD4", fontSize: 13, fontWeight: 700, cursor: "pointer"
+                }}>+ Add Ingredient</button>
+              </div>
+
+              {/* Notes / tip */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Notes</div>
+                <textarea
+                  value={builderTip}
+                  onChange={e => setBuilderTip(e.target.value)}
+                  placeholder="Any tips, swaps, or things to remember..."
+                  rows={2} maxLength={300}
+                  style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1.5px solid #BFDBFE", borderRadius: 12, outline: "none", fontFamily: "inherit", resize: "vertical", background: "#F7F9FC", boxSizing: "border-box", lineHeight: 1.6 }}
+                  onFocus={e => e.target.style.borderColor = "#7AAFD4"}
+                  onBlur={e => e.target.style.borderColor = "#BFDBFE"}
+                />
+              </div>
+
+              {builderError && (
+                <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 14, color: "#dc2626", fontWeight: 700 }}>
+                  {builderError}
+                </div>
+              )}
+
+              <button onClick={saveMyRecipe} style={{
+                width: "100%", padding: "14px",
+                background: builderSaved ? "#7AAFD4" : "#2C5282",
+                color: "#FFFFFF", border: "none",
+                borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer",
+                transition: "all 0.2s", boxShadow: builderSaved ? "none" : "0 4px 16px rgba(44,82,130,0.25)"
+              }}>
+                {builderSaved ? "✓ Recipe Saved!" : `Save Recipe · ${builderTotal}mg`}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── My Recipes list ── */}
+        {myRecipes.length > 0 && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+              My Recipes ({myRecipes.length})
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {myRecipes.map(recipe => {
+                const col = builderOxColor(recipe.totalOxalate);
+                return (
+                  <div key={recipe.id}
+                    onClick={() => setSelectedMyRecipe(recipe)}
+                    style={{
+                      background: "#FFFFFF", borderRadius: 16,
+                      border: "1px solid #6E7187",
+                      padding: "18px", cursor: "pointer",
+                      boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
+                      transition: "transform 0.15s"
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                    onMouseLeave={e => e.currentTarget.style.transform = ""}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: "#2C5282", marginBottom: 4 }}>{recipe.title}</div>
+                        <div style={{ display: "flex", gap: 12, fontSize: 14, color: "#6E7187" }}>
+                          <span>🍽 {recipe.category}</span>
+                          <span>👤 {recipe.servings} serving{recipe.servings > 1 ? "s" : ""}</span>
+                          <span>🧪 {recipe.ingredients.length} ingredients</span>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "center", marginLeft: 12, flexShrink: 0 }}>
+                        <div style={{ fontSize: 24, fontWeight: 900, color: col, lineHeight: 1 }}>{recipe.totalOxalate}</div>
+                        <div style={{ fontSize: 8, color: col, fontWeight: 700, textTransform: "uppercase" }}>mg ox</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Sources & Disclaimers Footer ── */}
+      <div style={{ margin: "0 16px 24px", background: "#FFFFFF", borderRadius: 18, border: "1px solid #BFDBFE", overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ background: "#2C5282", padding: "18px", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 14 }}>📚</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#FFFFFF", textTransform: "uppercase", letterSpacing: "0.1em" }}>Clinical Sources</span>
+        </div>
+        <div style={{ padding: "18px" }}>
+          <p style={{ fontSize: 14, color: "#6E7187", lineHeight: 1.6, marginBottom: 12 }}>
+            All recipes and dietary guidance are grounded in peer-reviewed research and recommendations from registered dietitian nutritionists specializing in kidney stone prevention.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[
+              { name: "National Kidney Foundation", desc: "Kidney Stone Diet Plan & Prevention", url: "https://www.kidney.org/kidney-topics/kidney-stone-diet-plan-and-prevention" },
+              { name: "NIDDK", desc: "Eating, Diet & Nutrition for Kidney Stones", url: "https://www.niddk.nih.gov/health-information/urologic-diseases/kidney-stones/eating-diet-nutrition" },
+              { name: "Urology Care Foundation", desc: "Fight Kidney Stones with Food Cookbook", url: "https://www.urologyhealth.org/documents/Product-Store/English/Kidney-Stones-Cookbook.pdf" },
+              { name: "Journal of Renal Nutrition", desc: "Whole Diet Approach to Calcium Oxalate Kidney Stone Prevention", url: "https://www.jrnjournal.org/article/S1051-2276(21)00268-5/fulltext" },
+              { name: "Jill Harris RD — Kidney Stone Diet", desc: "Low Oxalate Recipes & Meal Plans", url: "https://kidneystonediet.com/recipes/" },
+              { name: "Melanie Betz MS RD — The Kidney Dietitian", desc: "The Kidney Stone Diet: Evidence-Based Nutrition", url: "https://www.thekidneydietitian.org/kidney-stone-diet/" },
+              { name: "NKF of Hawaii", desc: "How Oxalates Affect Kidney Health", url: "https://kidneyhi.org/blog/how-oxalates-affect-kidney-health-what-you-need-to-know-to-prevent-kidney-stones/" },
+            ].map(source => (
+              <a key={source.name} href={source.url} target="_blank" rel="noreferrer"
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, padding: "9px 12px", background: "#ffffff", borderRadius: 12, border: "1px solid #BFDBFE", textDecoration: "none", transition: "border-color 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "#7AAFD4"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "#BFDBFE"}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#2C5282", marginBottom: 2 }}>{source.name}</div>
+                  <div style={{ fontSize: 14, color: "#6E7187" }}>{source.desc}</div>
+                </div>
+                <span style={{ fontSize: 11, color: "#7AAFD4", flexShrink: 0, marginTop: 2 }}>↗</span>
+              </a>
+            ))}
+          </div>
+          {/* Disclaimer */}
+          <div style={{ marginTop: 14, padding: "10px 12px", background: "#FFF9E6", border: "1px solid #FCD34D", borderRadius: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#92400E", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>⚠️ Medical Disclaimer</div>
+            <p style={{ fontSize: 11, color: "#78350F", lineHeight: 1.6, margin: 0 }}>
+              Loxalate is a dietary reference tool, not a substitute for medical advice. Oxalate targets vary by individual — always consult your nephrologist or registered dietitian before making significant dietary changes. Information is provided for general educational purposes only.
+            </p>
+          </div>
+          {/* Copyright */}
+          <div style={{ marginTop: 12, textAlign: "center" }}>
+            <img src={LOGO_B64} alt="Loxalate" style={{ height: 22, width: "auto", opacity: 0.5, marginBottom: 4 }} />
+            <div style={{ fontSize: 10, color: "#B0B3C4" }}>© {new Date().getFullYear()} Loxalate · loxalate.me · All rights reserved</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Recipe detail modal ── */}
+      {selectedRecipe && (
+        <div
+          onClick={() => setSelectedRecipe(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 1000,
+            background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)",
+            display: "flex", alignItems: "flex-end", justifyContent: "center"
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: "100%", maxWidth: 560,
+              background: "#FFFFFF",
+              borderRadius: "20px 20px 0 0",
+              maxHeight: "92vh",
+              display: "flex", flexDirection: "column",
+              animation: "modalUp 0.3s cubic-bezier(.15,.85,.3,1) forwards",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.2)"
+            }}
+          >
+            {/* Handle */}
+            <div style={{ padding: "14px 0 0", display: "flex", justifyContent: "center", flexShrink: 0 }}>
+              <div style={{ width: 40, height: 4, background: "#7AAFD4", borderRadius: 2 }} />
+            </div>
+
+            {/* Scrollable content */}
+            <div style={{ overflowY: "auto", padding: "12px 22px 40px" }}>
+              {/* Tag + title */}
+              <span style={{
+                display: "inline-block", fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999,
+                background: selectedRecipe.tagColor + "18", color: selectedRecipe.tagColor,
+                border: `1px solid ${selectedRecipe.tagColor}44`, textTransform: "uppercase",
+                letterSpacing: "0.06em", marginBottom: 8
+              }}>{selectedRecipe.tag}</span>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#2C5282", lineHeight: 1.2, marginBottom: 6 }}>
+                {selectedRecipe.title}
+              </div>
+
+              {/* Stats row */}
+              <div style={{ display: "flex", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
+                {[
+                  { label: "Total Oxalate", val: `${selectedRecipe.totalOxalate}mg`, color: oxColor(selectedRecipe.totalOxalate) },
+                  { label: "Prep Time", val: selectedRecipe.prepTime, color: "#6E7187" },
+                  { label: "Servings", val: selectedRecipe.servings, color: "#6E7187" },
+                  { label: "Category", val: selectedRecipe.category, color: "#6E7187" },
+                ].map(s => (
+                  <div key={s.label} style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: s.color }}>{s.val}</div>
+                    <div style={{ fontSize: 10, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Why it works */}
+              <div style={{
+                background: "#7AAFD4", borderRadius: 14, padding: "12px 14px", marginBottom: 16,
+                border: "1px solid #7AAFD444"
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#7AAFD4", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>
+                  🔬 Why This Works
+                </div>
+                <div style={{ fontSize: 13, color: "#2C5282", lineHeight: 1.6 }}>
+                  {selectedRecipe.whyItWorks}
+                </div>
+              </div>
+
+              {/* Source */}
+              <div style={{ fontSize: 14, color: "#6E7187", marginBottom: 16 }}>
+                📖 Source:{" "}
+                <a href={selectedRecipe.sourceUrl} target="_blank" rel="noreferrer"
+                  style={{ color: "#7AAFD4", fontWeight: 700, textDecoration: "none" }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {selectedRecipe.source}
+                </a>
+              </div>
+
+              {/* Ingredients */}
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+                Ingredients
+              </div>
+              {selectedRecipe.ingredients.map((ing, i) => {
+                const maxOx = Math.max(...selectedRecipe.ingredients.map(x => x.oxalate), 1);
+                const pct = ing.oxalate === 0 ? 0 : Math.max((ing.oxalate / maxOx) * 100, 5);
+                const c = oxColor(ing.oxalate);
+                return (
+                  <div key={i} style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                      <span style={{ fontSize: 13, color: "#2C5282", fontWeight: 500 }}>{ing.name}</span>
+                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                        <span style={{ fontSize: 14, color: "#6E7187" }}>{ing.amount}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#6E7187" : c, minWidth: 36, textAlign: "right" }}>
+                          {ing.oxalate === 0 ? "0mg" : `${ing.oxalate}mg`}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ height: 3, background: "#7AAFD4", borderRadius: 2 }}>
+                      {ing.oxalate > 0 && <div style={{ height: "100%", width: `${pct}%`, background: c, borderRadius: 2 }} />}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Steps */}
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", margin: "18px 0 10px" }}>
+                Instructions
+              </div>
+              {selectedRecipe.steps.map((step, i) => (
+                <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: "50%", background: "#7AAFD4",
+                    color: "#FFFFFF", fontSize: 12, fontWeight: 800,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1
+                  }}>{i + 1}</div>
+                  <div style={{ fontSize: 15, color: "#374151", lineHeight: 1.6, flex: 1 }}>{step}</div>
+                </div>
+              ))}
+
+              {/* Tips */}
+              <div style={{
+                background: "#fffbeb", borderRadius: 14, padding: "12px 14px",
+                border: "1px solid #fcd34d", marginTop: 8
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>
+                  💡 Dietitian Tip
+                </div>
+                <div style={{ fontSize: 13, color: "#78350f", lineHeight: 1.6 }}>
+                  {selectedRecipe.tips}
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
+                <button
+                  onClick={() => addRecipeToLog(selectedRecipe)}
+                  style={{
+                    flex: 1, padding: "18px",
+                    background: loggedRecipes[selectedRecipe.id] ? "#7AAFD4" : "#2C5282",
+                    color: loggedRecipes[selectedRecipe.id] ? "#2C5282" : "#FFFFFF",
+                    border: "2px solid #2C5282", borderRadius: 16,
+                    fontSize: 16, fontWeight: 800, cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  {loggedRecipes[selectedRecipe.id] ? "✓ Added to Log!" : "📋 Add to Daily Log"}
+                </button>
+                <button
+                  onClick={() => toggleSave(selectedRecipe.id)}
+                  style={{
+                    flex: 1, padding: "18px",
+                    background: savedRecipes[selectedRecipe.id] ? "#7AAFD4" : "none",
+                    color: savedRecipes[selectedRecipe.id] ? "#2C5282" : "#6E7187",
+                    border: "2px solid #7AAFD4", borderRadius: 16,
+                    fontSize: 16, fontWeight: 800, cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  {savedRecipes[selectedRecipe.id] ? "❤️ Saved" : "🤍 Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── My Recipe detail modal ── */}
+      <PageFooter onNavigate={onNavigate} />
+
+      {selectedMyRecipe && (
+        <div
+          onClick={() => setSelectedMyRecipe(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 1001, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 560, background: "#FFFFFF", borderRadius: "20px 20px 0 0", maxHeight: "92vh", display: "flex", flexDirection: "column", animation: "modalUp 0.3s cubic-bezier(.15,.85,.3,1) forwards", boxShadow: "0 -8px 40px rgba(0,0,0,0.2)" }}
+          >
+            <div style={{ padding: "14px 0 0", display: "flex", justifyContent: "center", flexShrink: 0 }}>
+              <div style={{ width: 40, height: 4, background: "#7AAFD4", borderRadius: 2 }} />
+            </div>
+            <div style={{ overflowY: "auto", padding: "12px 22px 40px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: "#f3f4f6", color: "#6E7187", display: "inline-block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>My Recipe</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "#2C5282", lineHeight: 1.2 }}>{selectedMyRecipe.title}</div>
+                </div>
+                <div style={{ textAlign: "center", marginLeft: 12, flexShrink: 0 }}>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: builderOxColor(selectedMyRecipe.totalOxalate), lineHeight: 1 }}>{selectedMyRecipe.totalOxalate}</div>
+                  <div style={{ fontSize: 10, color: builderOxColor(selectedMyRecipe.totalOxalate), fontWeight: 700, textTransform: "uppercase" }}>mg oxalate</div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
+                {[
+                  { label: "Category", val: selectedMyRecipe.category },
+                  { label: "Servings", val: selectedMyRecipe.servings },
+                  { label: "Ingredients", val: selectedMyRecipe.ingredients.length },
+                ].map(s => (
+                  <div key={s.label} style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: "#2C5282" }}>{s.val}</div>
+                    <div style={{ fontSize: 10, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Ingredients</div>
+              {selectedMyRecipe.ingredients.map((ing, i) => {
+                const maxOx = Math.max(...selectedMyRecipe.ingredients.map(x => x.oxalate), 1);
+                const pct = ing.oxalate === 0 ? 0 : Math.max((ing.oxalate / maxOx) * 100, 5);
+                const c = builderOxColor(ing.oxalate);
+                return (
+                  <div key={i} style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                      <span style={{ fontSize: 13, color: "#2C5282", fontWeight: 500 }}>{ing.name}</span>
+                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                        <span style={{ fontSize: 14, color: "#6E7187" }}>{ing.amount}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#6E7187" : c, minWidth: 36, textAlign: "right" }}>{ing.oxalate === 0 ? "0mg" : `${ing.oxalate}mg`}</span>
+                      </div>
+                    </div>
+                    <div style={{ height: 3, background: "#7AAFD4", borderRadius: 2 }}>
+                      {ing.oxalate > 0 && <div style={{ height: "100%", width: `${pct}%`, background: c, borderRadius: 2 }} />}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#6E7187", textTransform: "uppercase", letterSpacing: "0.1em", margin: "16px 0 10px" }}>Instructions</div>
+              {selectedMyRecipe.steps.map((step, i) => (
+                <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#7AAFD4", color: "#FFFFFF", fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                  <div style={{ fontSize: 15, color: "#374151", lineHeight: 1.6, flex: 1 }}>{step}</div>
+                </div>
+              ))}
+
+              {selectedMyRecipe.tips && (
+                <div style={{ background: "#fffbeb", borderRadius: 14, padding: "12px 14px", border: "1px solid #fcd34d", marginTop: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>💡 My Note</div>
+                  <div style={{ fontSize: 13, color: "#78350f", lineHeight: 1.6 }}>{selectedMyRecipe.tips}</div>
+                </div>
+              )}
+
+              <button
+                onClick={() => deleteMyRecipe(selectedMyRecipe.id)}
+                style={{ width: "100%", marginTop: 18, padding: "13px", background: "#fef2f2", color: "#dc2626", border: "2px solid #fca5a5", borderRadius: 16, fontSize: 17, fontWeight: 800, cursor: "pointer" }}
+              >
+                🗑 Delete This Recipe
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function PageFooter({ onNavigate }) {
   return (
     <div style={{ background: "#2C5282", padding: "32px 20px 28px", marginTop: 8 }}>
