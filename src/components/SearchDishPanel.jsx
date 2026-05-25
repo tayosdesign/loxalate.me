@@ -125,27 +125,27 @@ function getCuisine(dish) {
 const S = {
   panel: {
     display: "flex", flexDirection: "column", height: "100%",
-    background: "#fdf5f2", fontFamily: "'DM Sans', sans-serif", overflow: "hidden",
+    background: "#FDFBF7", fontFamily: "'DM Sans', sans-serif", overflow: "hidden",
   },
   searchWrap: {
     padding: "12px 16px 8px", background: "#fff",
-    borderBottom: "1px solid rgba(58,112,144,0.1)", flexShrink: 0,
+    borderBottom: "1px solid #F0E5CC", flexShrink: 0,
   },
   searchBar: {
     display: "flex", alignItems: "center", gap: 8,
-    background: "#fde8e0", border: "1px solid #eacfc3",
+    background: "#FDFBF7", border: "1px solid #E5D3B3",
     borderRadius: 40, padding: "0 14px", height: 42,
   },
   searchInput: {
     border: "none", background: "transparent", outline: "none",
-    fontSize: 13.5, color: "#2c5266", flex: 1,
+    fontSize: 13.5, color: "#1A1A1A", flex: 1,
     fontFamily: "'DM Sans', sans-serif",
   },
   clearBtn: {
     width: 20, height: 20, borderRadius: "50%",
-    background: "#eacfc3", border: "none", cursor: "pointer",
+    background: "#E5D3B3", border: "none", cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 11, color: "#8AAFC0", flexShrink: 0,
+    fontSize: 11, color: "#8A8580", flexShrink: 0,
   },
   cuisineRow: {
     display: "flex", gap: 7, padding: "8px 16px 10px",
@@ -155,20 +155,20 @@ const S = {
   pill: (active) => ({
     padding: "5px 14px", borderRadius: 40, fontSize: 12, fontWeight: 500,
     whiteSpace: "nowrap", cursor: "pointer",
-    border: active ? "1.5px solid #3A7090" : "1.5px solid rgba(58,112,144,0.15)",
-    background: active ? "#3A7090" : "transparent",
-    color: active ? "#fff" : "#8AAFC0",
+    border: active ? "1.5px solid #8DAA91" : "1.5px solid #E5D3B3",
+    background: active ? "#8DAA91" : "transparent",
+    color: active ? "#fff" : "#8A8580",
     transition: "all 0.15s", fontFamily: "'DM Sans', sans-serif",
   }),
   oxRow: {
     display: "flex", gap: 8, padding: "8px 16px 12px",
-    background: "#fff", borderBottom: "1px solid rgba(58,112,144,0.1)", flexShrink: 0,
+    background: "#fff", borderBottom: "1px solid #F0E5CC", flexShrink: 0,
   },
   oxBtn: (key, active) => {
     const colors = {
-      low:  { bg: active ? "#7AAFD4" : "#e8f4fb", text: active ? "#fff" : "#2a6a90", border: "#b0d8f0" },
-      med:  { bg: active ? "#F5C518" : "#fdf6dc", text: active ? "#fff" : "#7a5500", border: "#f0d868" },
-      high: { bg: active ? "#E05540" : "#fef0ee", text: active ? "#fff" : "#a83020", border: "#f0b4aa" },
+      low:  { bg: active ? "#8DAA91" : "#EBF1EC", text: active ? "#fff" : "#4F6B53", border: "#C5D4C7" },
+      med:  { bg: active ? "#E5D3B3" : "#F8F1E2", text: active ? "#fff" : "#6B5A35", border: "#E5D3B3" },
+      high: { bg: active ? "#D17A5D" : "#F8EAE3", text: active ? "#fff" : "#8B4A35", border: "#E9C4B5" },
     }[key];
     return {
       flex: 1, padding: "7px 0", borderRadius: 10, cursor: "pointer",
@@ -187,16 +187,16 @@ const S = {
     padding: "0 16px", marginBottom: 10,
   },
   catTitle: {
-    fontFamily: "'DM Serif Display', serif", fontSize: 17, color: "#3A7090",
+    fontFamily: "'DM Serif Display', serif", fontSize: 17, color: "#1A1A1A",
   },
-  catCount: { fontSize: 11, color: "#8AAFC0" },
+  catCount: { fontSize: 11, color: "#8A8580" },
   hrow: {
     display: "flex", gap: 10, padding: "0 16px",
     overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch",
   },
   card: (dimmed) => ({
     flexShrink: 0, width: 140, background: "#fff",
-    borderRadius: 14, border: "1px solid rgba(58,112,144,0.12)",
+    borderRadius: 14, border: "1px solid #E5D3B3",
     overflow: "hidden", cursor: "pointer",
     transition: "transform 0.12s, border-color 0.15s, opacity 0.2s",
     opacity: dimmed ? 0.2 : 1, filter: dimmed ? "grayscale(0.4)" : "none",
@@ -205,23 +205,24 @@ const S = {
   cardThumb: { width: "100%", display: "block" },
   cardBody: { padding: "8px 10px 10px" },
   cardMgRow: { display: "flex", alignItems: "baseline", gap: 3, marginBottom: 2 },
-  cardMg: { fontSize: 18, fontWeight: 700, color: "#3A7090", lineHeight: 1 },
-  cardMgUnit: { fontSize: 10, fontWeight: 400, color: "#8AAFC0" },
-  cardName: { fontSize: 11, fontWeight: 500, color: "#2c5266", lineHeight: 1.35, marginBottom: 4 },
+  cardMg: { fontSize: 18, fontWeight: 700, color: "#1A1A1A", lineHeight: 1 },
+  cardMgUnit: { fontSize: 10, fontWeight: 400, color: "#8A8580" },
+  cardName: { fontSize: 11, fontWeight: 500, color: "#1A1A1A", lineHeight: 1.35, marginBottom: 4 },
   cardTag: {
     display: "inline-block", padding: "2px 7px", borderRadius: 20,
-    fontSize: 10, fontWeight: 500, background: "#fde8e0", color: "#8AAFC0",
+    fontSize: 10, fontWeight: 500, background: "#FDFBF7", color: "#D17A5D",
+    border: "1px solid #E5D3B3",
   },
   viewMoreWrap: { padding: "10px 16px 0" },
   viewMoreBtn: {
     width: "100%", padding: 10, borderRadius: 12,
-    border: "1.5px dashed rgba(58,112,144,0.18)", background: "transparent",
-    fontSize: 12, fontWeight: 500, color: "#8AAFC0", cursor: "pointer",
+    border: "1.5px dashed #E5D3B3", background: "transparent",
+    fontSize: 12, fontWeight: 500, color: "#8A8580", cursor: "pointer",
     fontFamily: "'DM Sans', sans-serif", display: "flex",
     alignItems: "center", justifyContent: "center", gap: 6,
   },
-  divider: { height: 1, background: "rgba(58,112,144,0.08)", margin: "10px 16px 0" },
-  emptyState: { padding: "48px 24px", textAlign: "center", color: "#8AAFC0", fontSize: 14 },
+  divider: { height: 1, background: "#F0E5CC", margin: "10px 16px 0" },
+  emptyState: { padding: "48px 24px", textAlign: "center", color: "#8A8580", fontSize: 14 },
 };
 
 // ── SUB-COMPONENTS ────────────────────────────────────────────────────────────
@@ -303,10 +304,10 @@ function CuisineSection({ cuisine, dishes, activeCuisine, oxBand, searchQuery, e
 // ── DISH DETAIL MODAL ─────────────────────────────────────────────────────────
 
 function oxColor(mg) {
-  if (mg <= 5)  return "#7AAFD4";
-  if (mg <= 15) return "#7AAFD4";
-  if (mg <= 30) return "#F5C518";
-  return "#E05540";
+  if (mg <= 5)  return "#8DAA91";
+  if (mg <= 15) return "#8DAA91";
+  if (mg <= 30) return "#E5D3B3";
+  return "#D17A5D";
 }
 function oxLabel(mg) {
   if (mg <= 5)  return "Very Low";
@@ -359,7 +360,7 @@ function DishDetail({ dish, onClose, onAdd }) {
 
   return (
     <div style={{
-      position: "fixed", inset: 0, background: "rgba(44,82,102,0.7)",
+      position: "fixed", inset: 0, background: "rgba(26,26,26,0.55)",
       zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center",
       backdropFilter: "blur(4px)",
     }} onClick={onClose}>
@@ -370,13 +371,13 @@ function DishDetail({ dish, onClose, onAdd }) {
 
         {/* Handle */}
         <div style={{ padding: "14px 0 0", display: "flex", justifyContent: "center" }}>
-          <div style={{ width: 40, height: 4, background: "#D4E7F2", borderRadius: 2 }} />
+          <div style={{ width: 40, height: 4, background: "#E5D3B3", borderRadius: 2 }} />
         </div>
 
         <div style={{ padding: "12px 20px 0" }}>
           {/* Restaurant + dish name */}
-          <div style={{ fontSize: 12, color: "#8AAFC0", marginBottom: 4 }}>{restaurantName} · {area}</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#3A7090", lineHeight: 1.2, marginBottom: 12 }}>{dish.dish}</div>
+          <div style={{ fontSize: 12, color: "#8A8580", marginBottom: 4 }}>{restaurantName} · {area}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "#1A1A1A", lineHeight: 1.2, marginBottom: 12 }}>{dish.dish}</div>
 
           {/* Oxalate badge + modifications */}
           <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
@@ -386,37 +387,37 @@ function DishDetail({ dish, onClose, onAdd }) {
               <div style={{ fontSize: 10, color: col }}>{label}</div>
             </div>
             {dish.modifications && dish.modifications !== "None needed" && (
-              <div style={{ background: "#FDE8E0", borderRadius: 12, padding: "10px 14px", flex: 1 }}>
-                <div style={{ fontSize: 10, color: "#8AAFC0", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Tip</div>
-                <div style={{ fontSize: 13, color: "#3A7090", lineHeight: 1.5 }}>{dish.modifications}</div>
+              <div style={{ background: "#FDFBF7", borderRadius: 12, padding: "10px 14px", flex: 1 }}>
+                <div style={{ fontSize: 10, color: "#8A8580", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Tip</div>
+                <div style={{ fontSize: 13, color: "#1A1A1A", lineHeight: 1.5 }}>{dish.modifications}</div>
               </div>
             )}
           </div>
 
           {/* Cooking method */}
           {dish.cookingMethod && (
-            <div style={{ fontSize: 13, color: "#8AAFC0", marginBottom: 14 }}>🍳 {dish.cookingMethod}</div>
+            <div style={{ fontSize: 13, color: "#8A8580", marginBottom: 14 }}>🍳 {dish.cookingMethod}</div>
           )}
 
           {/* Ingredients */}
           {dish.ingredients?.length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Ingredients</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#8A8580", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Ingredients</div>
               {dish.ingredients.map((ing, i) => {
                 const pct = ing.oxalate === 0 ? 0 : Math.max((ing.oxalate / maxOx) * 100, 6);
                 const c   = oxColor(ing.oxalate);
                 return (
                   <div key={i} style={{ marginBottom: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, color: "#3A7090", fontWeight: 500 }}>{ing.name}</span>
+                      <span style={{ fontSize: 13, color: "#1A1A1A", fontWeight: 500 }}>{ing.name}</span>
                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                        <span style={{ fontSize: 12, color: "#8AAFC0" }}>{ing.amount}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#8AAFC0" : c, minWidth: 36, textAlign: "right" }}>
+                        <span style={{ fontSize: 12, color: "#8A8580" }}>{ing.amount}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: ing.oxalate === 0 ? "#8A8580" : c, minWidth: 36, textAlign: "right" }}>
                           {ing.oxalate}mg
                         </span>
                       </div>
                     </div>
-                    <div style={{ height: 3, background: "#F0F0F0", borderRadius: 2 }}>
+                    <div style={{ height: 3, background: "#F0E5CC", borderRadius: 2 }}>
                       {ing.oxalate > 0 && <div style={{ height: "100%", width: `${pct}%`, background: c, borderRadius: 2 }} />}
                     </div>
                   </div>
@@ -427,7 +428,7 @@ function DishDetail({ dish, onClose, onAdd }) {
 
           {/* Order buttons */}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#8AAFC0", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Order for delivery</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8A8580", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>Order for delivery</div>
             <div style={{ display: "flex", gap: 8 }}>
               {platforms.map(p => (
                 <a key={p.name} href={p.url} target="_blank" rel="noreferrer"
@@ -441,7 +442,7 @@ function DishDetail({ dish, onClose, onAdd }) {
                 </a>
               ))}
             </div>
-            <div style={{ fontSize: 11, color: "#C8BEBB", textAlign: "center", marginTop: 6 }}>
+            <div style={{ fontSize: 11, color: "#8A8580", textAlign: "center", marginTop: 6 }}>
               Opens search for "{restaurantName}"
             </div>
           </div>
@@ -449,10 +450,10 @@ function DishDetail({ dish, onClose, onAdd }) {
           {/* Add to log button */}
           <button onClick={handleAdd} style={{
             width: "100%", padding: "15px",
-            background: added ? "#7AAFD4" : "#3A7090",
-            color: added ? "#3A7090" : "#FFFFFF",
+            background: added ? "#4F6B53" : "#8DAA91",
+            color: "#FFFFFF",
             border: "none", borderRadius: 16,
-            fontSize: 16, fontWeight: 800, cursor: "pointer",
+            fontSize: 16, fontWeight: 700, cursor: "pointer",
             transition: "all 0.2s",
           }}>
             {added ? "✓ Added to Log!" : "📋 Add to Today's Log"}
@@ -508,8 +509,8 @@ export default function SearchDishPanel({ onAdd = () => {} }) {
       <div style={S.searchWrap}>
         <div style={S.searchBar}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-            <circle cx="6.5" cy="6.5" r="4.5" stroke="#8AAFC0" strokeWidth="1.5"/>
-            <line x1="10" y1="10" x2="14" y2="14" stroke="#8AAFC0" strokeWidth="1.5" strokeLinecap="round"/>
+            <circle cx="6.5" cy="6.5" r="4.5" stroke="#8A8580" strokeWidth="1.5"/>
+            <line x1="10" y1="10" x2="14" y2="14" stroke="#8A8580" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
           <input
             style={S.searchInput}
@@ -545,10 +546,10 @@ export default function SearchDishPanel({ onAdd = () => {} }) {
 
       {/* Results count */}
       <div style={{ padding: "10px 16px 4px", display: "flex", justifyContent: "space-between", alignItems: "baseline", flexShrink: 0 }}>
-        <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 16, color: "#3A7090" }}>
+        <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 16, color: "#1A1A1A" }}>
           {activeCuisine === "All" ? "All Dishes" : activeCuisine}
         </span>
-        <span style={{ fontSize: 11, color: "#8AAFC0" }}>{totalVisible} dishes</span>
+        <span style={{ fontSize: 11, color: "#8A8580" }}>{totalVisible} dishes</span>
       </div>
 
       {/* Scrollable content */}
