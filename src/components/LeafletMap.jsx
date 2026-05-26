@@ -39,7 +39,8 @@ function LeafletMap({ restaurants, selectedRestaurant, onSelectRestaurant, filte
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png", {
       subdomains: "abcd",
       maxZoom: 19,
-      opacity: 0.55,
+      opacity: 0.9,
+      className: "loxalate-labels",
     }).addTo(mapRef.current);
 
     L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
@@ -228,6 +229,10 @@ function LeafletMap({ restaurants, selectedRestaurant, onSelectRestaurant, filte
         /* Slightly boost CartoDB Voyager contrast */
         .leaflet-tile-pane {
           filter: sepia(0.35) saturate(0.75) hue-rotate(-8deg) brightness(1.04) contrast(0.95);
+        }
+        /* Labels get a lighter touch so text stays readable */
+        .leaflet-tile-pane .loxalate-labels {
+          filter: saturate(0.6) brightness(0.85) contrast(1.15);
         }
         .leaflet-container {
           background: #E5D3B3 !important;
