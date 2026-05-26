@@ -30,10 +30,16 @@ function LeafletMap({ restaurants, selectedRestaurant, onSelectRestaurant, filte
       zoomControl: false,
     });
 
-    // Original OSM tiles — proven working
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    // Loxalate sand basemap — CartoDB Positron (clean light tiles)
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: "abcd",
       maxZoom: 19,
+    }).addTo(mapRef.current);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 19,
+      opacity: 0.55,
     }).addTo(mapRef.current);
 
     L.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
@@ -221,7 +227,10 @@ function LeafletMap({ restaurants, selectedRestaurant, onSelectRestaurant, filte
 
         /* Slightly boost CartoDB Voyager contrast */
         .leaflet-tile-pane {
-          filter: saturate(1.1) brightness(1.02);
+          filter: sepia(0.35) saturate(0.75) hue-rotate(-8deg) brightness(1.04) contrast(0.95);
+        }
+        .leaflet-container {
+          background: #E5D3B3 !important;
         }
       `}</style>
 
