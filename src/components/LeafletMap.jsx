@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 
 function LeafletMap({ restaurants, selectedRestaurant, onSelectRestaurant, filter }) {
   const mapContainerRef = useRef(null);
