@@ -2229,15 +2229,9 @@ function CommunityPage({ onNavigate = () => {} }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 // ─── PROFILE PAGE ────────────────────────────────────────────────────────────
-
 import ProfilePage from "./ProfilePage";
 
-<ProfilePage />
-// or with log data:
-<ProfilePage trackedDishes={dishes} removeFromLog={fn} clearLog={fn} />
-  
-
-  // ── Auto-scroll ref for Lowest Oxalate Picks strip ─────────────────────────
+// ── Auto-scroll ref for Lowest Oxalate Picks strip ─────────────────────────
   const picksScrollRef = useRef(null);
   useEffect(() => {
     const el = picksScrollRef.current;
