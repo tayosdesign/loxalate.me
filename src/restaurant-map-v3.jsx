@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import ProfilePage from "./ProfilePage";
 import SearchDishPanel from "./components/SearchDishPanel";
 import { ALL_DISHES, RESTAURANTS } from "./data/dishes";
 import LeafletMap from "./components/LeafletMap";
@@ -2229,7 +2230,6 @@ function CommunityPage({ onNavigate = () => {} }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 // ─── PROFILE PAGE ────────────────────────────────────────────────────────────
-import ProfilePage from "./ProfilePage";
 
 // ── Auto-scroll ref for Lowest Oxalate Picks strip ─────────────────────────
   const picksScrollRef = useRef(null);
